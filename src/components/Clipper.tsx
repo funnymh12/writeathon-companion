@@ -344,6 +344,84 @@ const Clipper: React.FC = () => {
         }
     };
 
+    // 将远程图片URL转换为base64（用于防盗链图片）
+    const fetchImageAsBase64 = async (imageUrl: string): Promise<string | null> => {
+        try {
+            // 使用 background script 来获取图片（绕过 CORS）
+            return new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    { type: 'FETCH_IMAGE_AS_BASE64', url: imageUrl },
+                    (response) => {
+                        if (response && response.success) {
+                            resolve(response.base64);
+                        } else {
+                            console.warn('Failed to fetch image:', response?.error);
+                            resolve(null);
+                        }
+                    }
+                );
+            });
+        } catch (err) {
+            console.error('fetchImageAsBase64 error:', err);
+            return null;
+        }
+    };
+
+    // 检测图片是否可以正常访问（防盗链检测）
+    const checkImageAccessible = async (imageUrl: string): Promise<boolean> => {
+        try {
+            // 使用 Image 对象加载测试
+            return new Promise((resolve) => {
+                const img = document.createElement('img');
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                // 添加随机参数避免缓存
+                img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                // 5秒超时
+                setTimeout(() => resolve(false), 5000);
+            });
+        } catch (err) {
+            return false;
+        }
+    };
+
+    // 处理防盗链图片：检测并上传无法访问的图片到imgbb
+    const processHotlinkProtectedImages = async (
+        contentText: string,
+        images: { alt: string; url: string }[],
+        imgbbApiKey: string
+    ): Promise<string> => {
+        let processedContent = contentText;
+
+        for (const image of images) {
+            // 跳过已经是 imgbb 的图片或 data URL
+            if (image.url.includes('imgbb.com') || image.url.includes('ibb.co') || image.url.startsWith('data:')) {
+                continue;
+            }
+
+            // 检测图片是否可以访问
+            const isAccessible = await checkImageAccessible(image.url);
+            if (!isAccessible) {
+                console.log('Hotlink protected image detected:', image.url);
+
+                // 获取图片的 base64 数据
+                const base64Data = await fetchImageAsBase64(image.url);
+                if (base64Data) {
+                    // 上传到 imgbb
+                    const uploadedUrl = await uploadToImgbb(base64Data, imgbbApiKey);
+                    if (uploadedUrl) {
+                        // 替换内容中的图片链接
+                        const oldMarkdown = `![${image.alt}](${image.url})`;
+                        const newMarkdown = `![${image.alt}](${uploadedUrl})`;
+                        processedContent = processedContent.replace(oldMarkdown, newMarkdown);
+                        console.log('Replaced hotlink image:', image.url, '->', uploadedUrl);
+                    }
+                }
+            }
+        }
+
+        return processedContent;
+    };
 
     // 从markdown内容中提取图片
     const extractImages = (content: string): { alt: string; url: string }[] => {
@@ -541,10 +619,25 @@ const Clipper: React.FC = () => {
                     return;
                 }
 
-                finalTitle = new Date().toLocaleString('zh-CN');
+                finalTitle = title.trim() || new Date().toLocaleString('zh-CN');
                 // Build Markdown content with all images
                 finalContent = uploadedUrls.map((url, idx) => `![Image ${idx + 1}](${url})`).join('\n\n');
                 finalContent += `\n\n> 剪藏于 ${new Date().toLocaleString('zh-CN')}`;
+            }
+
+            // 处理网页模式和链接模式中的防盗链图片
+            if ((mode === 'page' || mode === 'link') && finalContent.trim()) {
+                const imgbbApiKey = data.imgbbApiKey;
+                if (imgbbApiKey) {
+                    // 提取内容中的所有图片
+                    const images = extractImages(finalContent);
+                    if (images.length > 0) {
+                        console.log(`Processing ${images.length} images for hotlink protection...`);
+                        finalContent = await processHotlinkProtectedImages(finalContent, images, imgbbApiKey);
+                    }
+                } else {
+                    console.warn('imgbb API Key not configured, skipping hotlink protection');
+                }
             }
 
             const MAX_CHUNK_SIZE = 4500;
@@ -757,6 +850,18 @@ const Clipper: React.FC = () => {
                 {/* --- Image Mode --- */}
                 {mode === 'image' && (
                     <div className="space-y-4">
+                        {/* 标题输入框 */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-500">卡片标题</label>
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="输入标题（可选，留空将使用当前时间）"
+                                className="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                            />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={handleFetchPageImages}

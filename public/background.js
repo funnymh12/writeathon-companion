@@ -130,7 +130,58 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // 必须返回 true 以支持异步 sendResponse，或者不需要返回直接结束
         // 这里不需要回复
     }
+
+    // 处理获取图片并转换为 base64 的请求（用于防盗链图片处理）
+    if (message.type === 'FETCH_IMAGE_AS_BASE64') {
+        const imageUrl = message.url;
+
+        fetchImageAsBase64(imageUrl)
+            .then(base64 => {
+                sendResponse({ success: true, base64 });
+            })
+            .catch(error => {
+                console.error('Failed to fetch image:', error);
+                sendResponse({ success: false, error: error.message });
+            });
+
+        // 返回 true 表示将异步发送响应
+        return true;
+    }
 });
+
+// 获取远程图片并转换为 base64
+async function fetchImageAsBase64(imageUrl) {
+    try {
+        const response = await fetch(imageUrl, {
+            method: 'GET',
+            // 某些网站需要正确的 Referer
+            headers: {
+                'Accept': 'image/*,*/*;q=0.8'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                resolve(reader.result);
+            };
+            reader.onerror = () => {
+                reject(new Error('Failed to read blob as base64'));
+            };
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('fetchImageAsBase64 error:', error);
+        throw error;
+    }
+}
+
 
 async function handleQuickClip(tabId, pageTitle, pageUrl, selectedText) {
     if (!selectedText) {
