@@ -86,19 +86,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             const { imgbbApiKey } = await chrome.storage.local.get(['imgbbApiKey']);
 
             try {
-                // 执行防盗链检测：尝试在背景脚本中获取图片
-                // 如果是 anti-leech 图片，直接链接可能在写拉松中无法显示
-                // 我们通过 fetch 检查是否能获取到
-                const isAccessible = await checkUrlAccessible(imageUrl);
+                // 改进防盗链检测：域黑名单 + 响应检测
+                // 微信等网站会针对防盗链返回 200 OK 的「提示图片」，因此常规检测会失效
+                const needsProxy = isLikelyHotlinked(imageUrl) || !(await checkUrlAccessible(imageUrl));
 
-                if (!isAccessible && imgbbApiKey) {
-                    console.log('[写拉松] 检测到防盗链图片，尝试上传至图床:', imageUrl);
+                if (needsProxy && imgbbApiKey) {
+                    console.log('[写拉松] 检测到极可能存在防盗链的图片，尝试通过图床中转:', imageUrl);
                     const base64 = await fetchImageAsBase64(imageUrl);
                     if (base64) {
                         const uploadedUrl = await uploadToImgbb(base64, imgbbApiKey);
                         if (uploadedUrl) {
                             finalImageUrl = uploadedUrl;
-                            console.log('[写拉松] 图片已成功中转至图床:', finalImageUrl);
+                            console.log('[写拉松] 图片中转成功:', finalImageUrl);
                         }
                     }
                 }
@@ -216,12 +215,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // 获取远程图片并转换为 base64
 async function fetchImageAsBase64(imageUrl) {
     try {
+        // 对于防盗链极强的网站（如微信），有时需要空 Referer 才能获取原图
+        // 背景脚本 fetch 默认不带 Referer，这通常能绕过简单的防护
         const response = await fetch(imageUrl, {
             method: 'GET',
-            // 某些网站需要正确的 Referer，但背景脚本 fetch 不会自动带上 tab 的 referer
-            // 这里尽量模拟通用浏览器请求
+            credentials: 'omit',
             headers: {
-                'Accept': 'image/*,*/*;q=0.8'
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             }
         });
 
@@ -247,15 +249,47 @@ async function fetchImageAsBase64(imageUrl) {
     }
 }
 
+// 检测是否为已知的高频防盗链域名
+function isLikelyHotlinked(url) {
+    if (!url) return false;
+    const hotlinkDomains = [
+        'mmbiz.qpic.cn',   // 微信公众号
+        'zhimg.com',       // 知乎
+        'baidu.com',       // 百度
+        'sinaimg.cn',      // 新浪
+        '163.com',         // 网易
+        'pstatp.com',      // 今日头条/字节
+        'qpic.cn',         // 腾讯通用图片
+        'qlogo.cn',        // 腾讯头像
+        'csdnimg.cn',      // CSDN
+        'jianshu.io',      // 简书
+        'medium.com'       // Medium
+    ];
+
+    try {
+        const hostname = new URL(url).hostname;
+        return hotlinkDomains.some(domain => hostname.includes(domain));
+    } catch {
+        return false;
+    }
+}
+
 // 检测 URL 是否可访问
 async function checkUrlAccessible(url) {
     try {
-        const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
-        // 对于图片，如果返回 ok 说明基本可访问（即使是 no-cors）
-        // 如果是 403/404 等，会进入 catch 或 status 不对
-        return response.ok || response.type === 'opaque';
+        // 使用 HEAD 请求并设置 cache: no-store
+        const response = await fetch(url, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-store'
+        });
+
+        // 如果是 opaque 类型，说明受到了 CORS 限制，这种图片大概率在写拉松后台无法被正常抓取/渲染
+        // 我们将其视为需要中转
+        if (response.type === 'opaque') return false;
+
+        return response.ok;
     } catch (e) {
-        // 如果请求失败，说明可能有防盗链
         return false;
     }
 }

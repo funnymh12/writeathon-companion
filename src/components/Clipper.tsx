@@ -367,17 +367,33 @@ const Clipper: React.FC = () => {
         }
     };
 
+    // 检测是否为已知的高频防盗链域名
+    const isLikelyHotlinked = (url: string): boolean => {
+        if (!url) return false;
+        const hotlinkDomains = [
+            'mmbiz.qpic.cn', 'zhimg.com', 'baidu.com', 'sinaimg.cn',
+            '163.com', 'pstatp.com', 'qpic.cn', 'qlogo.cn',
+            'csdnimg.cn', 'jianshu.io', 'medium.com'
+        ];
+        try {
+            const hostname = new URL(url).hostname;
+            return hotlinkDomains.some(domain => hostname.includes(domain));
+        } catch {
+            return false;
+        }
+    };
+
     // 检测图片是否可以正常访问（防盗链检测）
     const checkImageAccessible = async (imageUrl: string): Promise<boolean> => {
         try {
-            // 使用 Image 对象加载测试
+            // 首先检查黑名单
+            if (isLikelyHotlinked(imageUrl)) return false;
+
             return new Promise((resolve) => {
                 const img = document.createElement('img');
                 img.onload = () => resolve(true);
                 img.onerror = () => resolve(false);
-                // 添加随机参数避免缓存
                 img.src = imageUrl + (imageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-                // 5秒超时
                 setTimeout(() => resolve(false), 5000);
             });
         } catch (err) {
@@ -399,10 +415,10 @@ const Clipper: React.FC = () => {
                 continue;
             }
 
-            // 检测图片是否可以访问
+            // 检测图片是否有效
             const isAccessible = await checkImageAccessible(image.url);
             if (!isAccessible) {
-                console.log('Hotlink protected image detected:', image.url);
+                console.log('Detection: Likely hotlinked image:', image.url);
 
                 // 获取图片的 base64 数据
                 const base64Data = await fetchImageAsBase64(image.url);
@@ -608,10 +624,11 @@ const Clipper: React.FC = () => {
                             console.warn(`Failed to upload clipboard image ${i + 1}`);
                         }
                     } else {
-                        // 检测是否为防盗链图片
-                        const isAccessible = await checkImageAccessible(img.src);
-                        if (!isAccessible) {
-                            console.log('Detection: Hotlink protection for', img.src);
+                        // 检测是否为已知防盗链域名或无法直接访问
+                        const needsProxy = isLikelyHotlinked(img.src) || !(await checkImageAccessible(img.src));
+
+                        if (needsProxy) {
+                            console.log('Detection: Image needs proxy (Hotlink protection):', img.src);
                             // 尝试通过背景脚本抓取并上传
                             const base64 = await fetchImageAsBase64(img.src);
                             if (base64) {
