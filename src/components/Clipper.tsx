@@ -317,6 +317,33 @@ const Clipper: React.FC = () => {
         }
     };
 
+    // Upload image to imgbb
+    const uploadToImgbb = async (base64Image: string, apiKey: string): Promise<string | null> => {
+        try {
+            // Remove data URL prefix if present
+            const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+
+            const formData = new FormData();
+            formData.append('image', base64Data);
+            formData.append('key', apiKey);
+
+            const response = await fetch('https://api.imgbb.com/1/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (result.success && result.data?.url) {
+                return result.data.url;
+            }
+            console.error('imgbb upload failed:', result);
+            return null;
+        } catch (err) {
+            console.error('imgbb upload error:', err);
+            return null;
+        }
+    };
+
 
     // 从markdown内容中提取图片
     const extractImages = (content: string): { alt: string; url: string }[] => {
@@ -479,10 +506,45 @@ const Clipper: React.FC = () => {
 
             // Image Mode handling
             if (mode === 'image') {
-                const selectedCount = pageImages.filter(i => i.selected).length;
-                if (selectedCount === 0) { setError('请选择至少一张图片'); setSending(false); return; }
-                finalTitle = `图片剪藏 (${selectedCount}张)`;
-                finalContent = `本次剪藏了 ${selectedCount} 张图片，请查看附件。`;
+                const selectedImages = pageImages.filter(i => i.selected);
+                if (selectedImages.length === 0) { setError('请选择至少一张图片'); setSending(false); return; }
+
+                // Check for imgbb API key
+                const imgbbApiKey = data.imgbbApiKey;
+                if (!imgbbApiKey) {
+                    setError('请先在设置中配置 imgbb API Key');
+                    setSending(false);
+                    return;
+                }
+
+                // Upload images to imgbb and collect URLs
+                const uploadedUrls: string[] = [];
+                for (let i = 0; i < selectedImages.length; i++) {
+                    const img = selectedImages[i];
+                    // Check if it's a base64 image (clipboard) or already a URL
+                    if (img.src.startsWith('data:')) {
+                        const uploadedUrl = await uploadToImgbb(img.src, imgbbApiKey);
+                        if (uploadedUrl) {
+                            uploadedUrls.push(uploadedUrl);
+                        } else {
+                            console.warn(`Failed to upload image ${i + 1}`);
+                        }
+                    } else {
+                        // Already a URL, use directly
+                        uploadedUrls.push(img.src);
+                    }
+                }
+
+                if (uploadedUrls.length === 0) {
+                    setError('图片上传失败，请检查 API Key');
+                    setSending(false);
+                    return;
+                }
+
+                finalTitle = `图片剪藏 (${uploadedUrls.length}张)`;
+                // Build Markdown content with all images
+                finalContent = uploadedUrls.map((url, idx) => `![Image ${idx + 1}](${url})`).join('\n\n');
+                finalContent += `\n\n> 剪藏于 ${new Date().toLocaleString('zh-CN')}`;
             }
 
             const MAX_CHUNK_SIZE = 4500;
@@ -739,9 +801,9 @@ const Clipper: React.FC = () => {
                             </p>
                         )}
 
-                        {/* API Limitation Notice */}
-                        <div className="mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg text-amber-700 text-[10px] text-center">
-                            ⚠️ 注意：受 API 限制，图片将以 URL 引用方式保存，而非上传到写拉松服务器。
+                        {/* ImgBB Upload Notice */}
+                        <div className="mt-2 p-2 bg-teal-50 border border-teal-100 rounded-lg text-teal-700 text-[10px] text-center">
+                            💡 剪贴板图片将通过 imgbb 上传为永久链接后保存到写拉松。
                         </div>
                     </div>
                 )}

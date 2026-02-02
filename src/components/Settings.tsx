@@ -33,6 +33,8 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
     const [username, setUsername] = useState('');
     const [shortcuts, setShortcuts] = useState<Shortcuts>(DEFAULT_SHORTCUTS);
     const [savingShortcuts, setSavingShortcuts] = useState(false);
+    const [imgbbApiKey, setImgbbApiKey] = useState('');
+    const [savingImgbb, setSavingImgbb] = useState(false);
 
     useEffect(() => {
         const loadStored = async () => {
@@ -46,6 +48,9 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
             }
             if (data.shortcuts) {
                 setShortcuts({ ...DEFAULT_SHORTCUTS, ...data.shortcuts });
+            }
+            if (data.imgbbApiKey) {
+                setImgbbApiKey(data.imgbbApiKey);
             }
         };
         loadStored();
@@ -87,6 +92,15 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
         setUsername('');
         setStatus('idle');
         setShortcuts(DEFAULT_SHORTCUTS);
+        setImgbbApiKey('');
+    };
+
+    const handleImgbbApiKeyChange = (value: string) => {
+        setImgbbApiKey(value);
+        setSavingImgbb(true);
+        storage.set({ imgbbApiKey: value }).then(() => {
+            setTimeout(() => setSavingImgbb(false), 500);
+        });
     };
 
     const handleShortcutChange = (key: keyof Shortcuts, value: string) => {
@@ -235,6 +249,30 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                     <p className="text-[10px] text-gray-400">
                         * 全局快捷键在任何网页都可触发（需刷新网页生效）
                     </p>
+                </div>
+            )}
+
+            {/* ImgBB API Key Section */}
+            {status === 'connected' && (
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">🖼️</span>
+                        <h3 className="text-sm font-medium text-gray-900">图床设置 (imgbb)</h3>
+                        {savingImgbb && <span className="text-[10px] text-green-600 animate-pulse">已保存</span>}
+                    </div>
+                    <div className="space-y-2 bg-white rounded-lg border border-gray-100 p-3">
+                        <label className="text-xs text-gray-500">图床 API Key</label>
+                        <input
+                            type="password"
+                            value={imgbbApiKey}
+                            onChange={(e) => handleImgbbApiKeyChange(e.target.value)}
+                            placeholder="粘贴 imgbb API Key..."
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                        <p className="text-[10px] text-gray-400">
+                            用于上传截图到图床。请在 <a href="https://api.imgbb.com/" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">api.imgbb.com</a> 注册并获取。
+                        </p>
+                    </div>
                 </div>
             )}
 

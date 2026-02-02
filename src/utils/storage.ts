@@ -4,6 +4,7 @@ export interface AppStorage {
     username?: string;
     selectedSpaceId?: string;
     selectedSpaceName?: string;
+    imgbbApiKey?: string; // For image hosting
     shortcuts?: {
         toggleMemo: string;
         toggleRecent: string;
@@ -16,7 +17,7 @@ export interface AppStorage {
 export const storage = {
     get: async (): Promise<AppStorage> => {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName', 'shortcuts'], (result) => {
+            chrome.storage.local.get(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName', 'imgbbApiKey', 'shortcuts'], (result) => {
                 resolve(result);
             });
         });
