@@ -2,6 +2,7 @@ export interface WriteathonResponse<T> {
     success: boolean;
     data: T;
     message?: string;
+    errorCode?: number;
 }
 
 export interface UserInfo {
@@ -11,6 +12,7 @@ export interface UserInfo {
 
 export interface Space {
     id: string;
+    _id?: string; // API可能返回_id
     title: string;
     description?: string;
 }
@@ -86,7 +88,8 @@ export class WriteathonClient {
     }
 
     async getRecentCards(excludeDateTitle: boolean = false): Promise<WriteathonResponse<Card[]>> {
-        return this.request<Card[]>(`/v1/users/:id/cards/recent?exclude_date_title=${excludeDateTitle}`);
+        const query = excludeDateTitle ? '?exclude_date_title=true' : '';
+        return this.request<Card[]>(`/v1/users/:id/cards/recent${query}`);
     }
 
     async getCardDetail(cardId: string): Promise<WriteathonResponse<Card>> {

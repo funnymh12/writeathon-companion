@@ -54,11 +54,15 @@ const Clipper: React.FC = () => {
                 const response = await client.getSpaces();
                 if (response.success && response.data) {
                     setSpaces(response.data);
-                    // 如果没有选中空间且有空间列表，选中第一个
-                    if (!selectedSpace && response.data.length > 0) {
-                        const savedSpace = data.selectedSpaceId;
-                        if (savedSpace && response.data.find(s => s.id === savedSpace)) {
-                            setSelectedSpace(savedSpace);
+                    // If no space selected yet, try to restore saved space
+                    if (!selectedSpace) {
+                        const savedSpaceId = data.selectedSpaceId;
+                        if (savedSpaceId) {
+                            // Verify the saved space still exists
+                            const exists = response.data.find(s => (s._id || s.id) === savedSpaceId);
+                            if (exists) {
+                                setSelectedSpace(savedSpaceId);
+                            }
                         }
                     }
                 }
@@ -72,7 +76,7 @@ const Clipper: React.FC = () => {
 
     const handleSpaceChange = async (spaceId: string) => {
         setSelectedSpace(spaceId);
-        const spaceName = spaces.find(s => s.id === spaceId)?.title || '默认空间';
+        const spaceName = spaces.find(s => (s._id || s.id) === spaceId)?.title || '默认空间';
         await storage.set({ selectedSpaceId: spaceId, selectedSpaceName: spaceName });
     };
 
@@ -289,14 +293,17 @@ const Clipper: React.FC = () => {
                         }
                     }
 
+                    console.log('Creating card with params:', params);
                     const response = await client.createCard(params);
 
                     if (!response.success) {
-                        throw new Error(response.message || `保存第 ${i + 1} 部分失败`);
+                        const error: any = new Error(response.message || `保存第 ${i + 1} 部分失败`);
+                        error.errorCode = response.errorCode;
+                        throw error;
                     }
                 }
 
-                const spaceName = spaces.find(s => s.id === selectedSpace)?.title || '默认空间';
+                const spaceName = spaces.find(s => (s.id || s._id) === selectedSpace)?.title || '默认空间';
                 setStatus('success');
                 if (totalChunks > 1) {
                     setError(`✅ 已保存 ${totalChunks} 部分到「${cardTitle}」(${spaceName})`);
@@ -310,7 +317,9 @@ const Clipper: React.FC = () => {
             }
         } catch (err: any) {
             setStatus('error');
-            setError(err.message || '保存失败');
+            const code = err.errorCode ? `[${err.errorCode}] ` : '';
+            const spaceInfo = selectedSpace ? ` (SpaceID: ${selectedSpace})` : ' (No Space Default)';
+            setError(`DEBUG v1.1: ${code}${err.message || '保存失败'}${spaceInfo} - Raw: ${JSON.stringify(err)}`);
         } finally {
             setSending(false);
         }
@@ -343,11 +352,14 @@ const Clipper: React.FC = () => {
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <option value="">默认空间</option>
-                        {spaces.map((space) => (
-                            <option key={space.id} value={space.id}>
-                                {space.title}
-                            </option>
-                        ))}
+                        {spaces.map((space) => {
+                            const id = space._id || space.id;
+                            return (
+                                <option key={id} value={id}>
+                                    {space.title}
+                                </option>
+                            );
+                        })}
                     </select>
                 </div>
 
