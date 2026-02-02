@@ -151,13 +151,67 @@ const Clipper: React.FC = () => {
     };
 
     // --- Link Parsing Logic ---
+    // Helper: Simple HTML to Markdown conversion (mirrors clipper.js logic)
+    const htmlToMarkdown = (node: Element): string => {
+        if (!node) return '';
+        let out = '';
+        Array.from(node.childNodes).forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                out += child.textContent?.replace(/[\n\t]+/g, ' ').replace(/\s+/g, ' ') || '';
+                return;
+            }
+            if (child.nodeType !== Node.ELEMENT_NODE) return;
+            const el = child as Element;
+            const tag = el.tagName.toLowerCase();
+            const innerContent = htmlToMarkdown(el);
+
+            switch (tag) {
+                case 'h1': out += `\n# ${innerContent}\n\n`; break;
+                case 'h2': out += `\n## ${innerContent}\n\n`; break;
+                case 'h3': out += `\n### ${innerContent}\n\n`; break;
+                case 'h4': out += `\n#### ${innerContent}\n\n`; break;
+                case 'p': out += `\n${innerContent.trim()}\n\n`; break;
+                case 'br': out += '  \n'; break;
+                case 'hr': out += '\n---\n'; break;
+                case 'ul':
+                case 'ol':
+                    Array.from(el.children).forEach((li, idx) => {
+                        const prefix = tag === 'ol' ? `${idx + 1}.` : '-';
+                        out += `${prefix} ${htmlToMarkdown(li).trim()}\n`;
+                    });
+                    out += '\n';
+                    break;
+                case 'blockquote': out += `\n> ${innerContent.trim().replace(/\n/g, '\n> ')}\n\n`; break;
+                case 'code': out += ` \`${innerContent}\` `; break;
+                case 'pre': out += `\n\`\`\`\n${el.textContent?.trim() || ''}\n\`\`\`\n\n`; break;
+                case 'strong': case 'b': out += ` **${innerContent.trim()}** `; break;
+                case 'em': case 'i': out += ` *${innerContent.trim()}* `; break;
+                case 'a':
+                    let href = el.getAttribute('href');
+                    if (href && !href.startsWith('javascript:')) {
+                        out += ` [${innerContent.trim()}](${href}) `;
+                    } else out += ` ${innerContent} `;
+                    break;
+                case 'img':
+                    let src = el.getAttribute('src') || el.getAttribute('data-src');
+                    const alt = el.getAttribute('alt') || '';
+                    if (src && !src.startsWith('data:')) out += `\n![${alt}](${src})\n`;
+                    break;
+                case 'div': case 'section': case 'article':
+                    out += `\n${innerContent}\n`;
+                    break;
+                default:
+                    out += innerContent;
+            }
+        });
+        return out.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+    };
+
     const handleParseLink = async () => {
         if (!dataUrl) {
             setError('请输入有效的链接地址');
             return;
         }
-
-        // Basic URL validation
         if (!dataUrl.startsWith('http')) {
             setError('链接必须以 http 或 https 开头');
             return;
@@ -175,34 +229,27 @@ const Clipper: React.FC = () => {
             const doc = parser.parseFromString(html, 'text/html');
 
             // Extract Title
-            const parsedTitle = doc.querySelector('title')?.innerText || '';
+            const parsedTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+                doc.querySelector('title')?.textContent || '未命名链接';
 
-            // Extract Content (Simple Heuristic)
-            // 1. Remove script/style
-            doc.querySelectorAll('script, style, nav, header, footer, iframe, noscript').forEach(el => el.remove());
+            // Remove junk elements
+            doc.querySelectorAll('script, style, nav, header, footer, iframe, noscript, aside, form').forEach(el => el.remove());
 
-            // 2. Try to find article content
+            // Find article content
             const article = doc.querySelector('article') || doc.querySelector('main') || doc.querySelector('.article') || doc.querySelector('.content') || doc.body;
-            let parsedContent = article ? (article as HTMLElement).innerText : '';
 
-            // Cleanup whitespace
-            parsedContent = parsedContent
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0)
-                .join('\n\n');
+            // Convert to Markdown
+            const parsedContent = htmlToMarkdown(article);
 
-            setTitle(parsedTitle || '未命名链接');
-            setContent(parsedContent.substring(0, 10000)); // Safety limit
+            setTitle(parsedTitle.trim());
+            setContent(parsedContent.substring(0, 15000)); // Safety limit
 
-            // Stats
             setStats({
-                words: parsedContent.length,
-                images: doc.querySelectorAll('img').length,
-                links: doc.querySelectorAll('a').length
+                words: parsedContent.replace(/\s/g, '').length,
+                images: (parsedContent.match(/!\[/g) || []).length,
+                links: (parsedContent.match(/\]\(/g) || []).length
             });
 
-            // Set source url
             setSourceUrl(dataUrl);
 
         } catch (err: any) {
@@ -691,6 +738,11 @@ const Clipper: React.FC = () => {
                                 已选择 {pageImages.filter(i => i.selected).length} 张
                             </p>
                         )}
+
+                        {/* API Limitation Notice */}
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg text-amber-700 text-[10px] text-center">
+                            ⚠️ 注意：受 API 限制，图片将以 URL 引用方式保存，而非上传到写拉松服务器。
+                        </div>
                     </div>
                 )}
 
