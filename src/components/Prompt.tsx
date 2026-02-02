@@ -3,7 +3,7 @@ import { WriteathonClient, Space, Card } from '../utils/api';
 import { storage } from '../utils/storage';
 import {
     Search, Plus, Check, Pin, PinOff, Clock, FolderOpen,
-    Loader2, ChevronDown, X, Send, AlertCircle
+    Loader2, ChevronDown, X, Send, AlertCircle, Copy, RefreshCw
 } from 'lucide-react';
 
 interface PromptItem extends Card {
@@ -12,7 +12,7 @@ interface PromptItem extends Card {
     usedAt?: number;
 }
 
-// 独立的卡片组件，避免在渲染时重新创建
+// 独立的卡片组件 - 优雅的视觉风格
 interface PromptCardProps {
     prompt: PromptItem;
     showTime?: boolean;
@@ -39,34 +39,7 @@ const PromptCard: React.FC<PromptCardProps> = ({
     getPromptContent
 }) => {
     const id = prompt._id || prompt.id || '';
-
-    const handleCopyClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('[PromptCard] Copy button clicked for:', id);
-        onCopy(prompt);
-    };
-
-    const handlePinClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('[PromptCard] Pin button clicked for:', id);
-        onTogglePin(id);
-    };
-
-    const handleInsertClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('[PromptCard] Insert button clicked for:', id);
-        onInsert(prompt);
-    };
-
-    const handleTitleClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('[PromptCard] Title clicked, toggling expand for:', id);
-        onToggleExpand(id);
-    };
+    const content = getPromptContent(prompt.content || '');
 
     const formatTime = (timestamp: number) => {
         const diff = Date.now() - timestamp;
@@ -77,78 +50,93 @@ const PromptCard: React.FC<PromptCardProps> = ({
     };
 
     return (
-        <div className="bg-white rounded-lg border border-gray-100 hover:border-teal-200 transition-all overflow-hidden">
-            <div className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                        <h3
-                            className="font-medium text-gray-800 text-sm truncate cursor-pointer hover:text-teal-600"
-                            onClick={handleTitleClick}
-                        >
+        <div
+            className={`group bg-white rounded-xl border transition-all duration-300 overflow-hidden ${isExpanded
+                    ? 'border-teal-400 shadow-md ring-1 ring-teal-100'
+                    : 'border-gray-100 hover:border-teal-200 hover:shadow-sm'
+                }`}
+        >
+            <div className="p-3.5">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onToggleExpand(id)}>
+                        <h3 className="font-semibold text-gray-800 text-[13px] leading-tight truncate group-hover:text-teal-600 transition-colors">
                             {prompt.title}
                         </h3>
+
+                        {/* 标签展示 */}
                         {prompt.tags && prompt.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-1.5">
                                 {prompt.tags.slice(0, 3).map((tag, i) => (
-                                    <span key={i} className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                                    <span key={i} className="text-[10px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full font-medium">
                                         {tag}
                                     </span>
                                 ))}
                             </div>
                         )}
+
                         {showTime && prompt.usedAt && (
-                            <span className="text-[10px] text-gray-300 mt-1 block">
-                                {formatTime(prompt.usedAt)}
-                            </span>
+                            <div className="flex items-center gap-1 mt-1.5 opacity-60">
+                                <Clock className="h-2.5 w-2.5" />
+                                <span className="text-[10px] text-gray-400">
+                                    {formatTime(prompt.usedAt)}
+                                </span>
+                            </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <button
                             type="button"
-                            onClick={handlePinClick}
-                            className={`p-1.5 rounded-md transition-colors ${isPinned ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'}`}
-                            title={isPinned ? '取消置顶' : '置顶'}
-                        >
-                            {isPinned ? <Pin className="h-3.5 w-3.5" /> : <PinOff className="h-3.5 w-3.5" />}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleCopyClick}
-                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${isCopied
-                                ? 'bg-green-500 text-white'
-                                : 'bg-teal-50 text-teal-600 hover:bg-teal-100'
+                            onClick={(e) => { e.stopPropagation(); onTogglePin(id); }}
+                            className={`p-1.5 rounded-lg transition-all ${isPinned
+                                    ? 'text-amber-500 bg-amber-50 shadow-inner'
+                                    : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'
                                 }`}
                         >
-                            {isCopied ? <Check className="h-3.5 w-3.5" /> : '复制'}
+                            {isPinned ? <Pin className="h-3.5 w-3.5 fill-current" /> : <PinOff className="h-3.5 w-3.5" />}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onCopy(prompt); }}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm active:scale-95 ${isCopied
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-teal-600 hover:text-white'
+                                }`}
+                        >
+                            {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                            <span>{isCopied ? '已复制' : '复制'}</span>
                         </button>
                     </div>
                 </div>
 
-                {/* 展开内容 */}
-                {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-gray-50">
-                        <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
-                            {getPromptContent(prompt.content || '')}
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                            <button
-                                type="button"
-                                onClick={handleInsertClick}
-                                className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-teal-600 text-white text-xs rounded-md hover:bg-teal-700 transition-colors"
-                            >
-                                <Send className="h-3 w-3" />
-                                插入到输入框
-                            </button>
+                {/* 展开的详情内容 */}
+                <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-3 pt-3 border-t border-gray-50' : 'grid-rows-[0fr] opacity-0'}`}>
+                    <div className="overflow-hidden">
+                        <div className="bg-gray-50 rounded-lg p-3 relative group/content">
+                            <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto scrollbar-thin">
+                                {content}
+                            </p>
+                            <div className="mt-3">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onInsert(prompt); }}
+                                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-all shadow-sm active:translate-y-0.5"
+                                >
+                                    <Send className="h-3.5 w-3.5" />
+                                    插入到输入框
+                                </button>
+                            </div>
                         </div>
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );
 };
 
 const Prompt: React.FC = () => {
-    // 状态
+    // 状态管理
     const [prompts, setPrompts] = useState<PromptItem[]>([]);
     const [filteredPrompts, setFilteredPrompts] = useState<PromptItem[]>([]);
     const [pinnedIds, setPinnedIds] = useState<string[]>([]);
@@ -156,31 +144,29 @@ const Prompt: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
 
-    // 空间相关
+    // 空间配置
     const [spaces, setSpaces] = useState<Space[]>([]);
     const [promptSpaceId, setPromptSpaceId] = useState('');
     const [showSpaceSelector, setShowSpaceSelector] = useState(false);
 
-    // 新建/编辑
+    // 编辑器状态
     const [showEditor, setShowEditor] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [newTags, setNewTags] = useState('');
     const [newContent, setNewContent] = useState('');
     const [saving, setSaving] = useState(false);
 
-    // 展开的卡片
     const [expandedId, setExpandedId] = useState<string | null>(null);
-
-    // 复制成功状态
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    // 初始化
+    // 初始化数据
     useEffect(() => {
         loadData();
     }, []);
 
-    // 搜索过滤
+    // 搜索过滤引擎
     useEffect(() => {
         if (!searchQuery.trim()) {
             setFilteredPrompts(prompts);
@@ -199,13 +185,10 @@ const Prompt: React.FC = () => {
         setError('');
         try {
             const data = await storage.get();
-
-            // 加载本地存储的数据
             setPinnedIds(data.pinnedPrompts || []);
             setRecentUsed(data.recentUsedPrompts || []);
             setPromptSpaceId(data.promptSpaceId || '');
 
-            // 获取空间列表
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
                 const spacesRes = await client.getSpaces();
@@ -213,19 +196,19 @@ const Prompt: React.FC = () => {
                     setSpaces(spacesRes.data);
                 }
 
-                // 如果有设定 Prompt 空间，加载 Prompts
                 if (data.promptSpaceId) {
                     await loadPrompts(data.promptSpaceId);
                 }
             }
         } catch (err: any) {
-            setError(err.message || '加载失败');
+            setError(err.message || '初始化失败');
         } finally {
             setLoading(false);
         }
     };
 
     const loadPrompts = async (spaceId: string) => {
+        setRefreshing(true);
         try {
             const data = await storage.get();
             if (!data.token || !data.userId) return;
@@ -234,39 +217,51 @@ const Prompt: React.FC = () => {
             const res = await client.getRecentCards(true, spaceId);
 
             if (res.success && res.data) {
-                // 解析标签和处理数据
-                const processed = res.data.map(card => {
-                    const tags = extractTags(card.content || '');
-                    return {
-                        ...card,
-                        tags,
-                        isPinned: pinnedIds.includes(card._id || card.id || '')
-                    };
-                });
+                // 并发获取所有卡片的详情内容
+                const cardsWithDetails = await Promise.all(
+                    res.data.slice(0, 50).map(async (card) => {
+                        const cardId = card._id || card.id || '';
+                        if (card.content && card.content.trim()) return card;
+
+                        try {
+                            const detail = await client.getCardDetail(cardId);
+                            return detail.success && detail.data
+                                ? { ...card, content: detail.data.content }
+                                : card;
+                        } catch {
+                            return card;
+                        }
+                    })
+                );
+
+                const processed = cardsWithDetails.map(card => ({
+                    ...card,
+                    tags: extractTags(card.content || ''),
+                    isPinned: pinnedIds.includes(card._id || card.id || '')
+                }));
+
                 setPrompts(processed);
                 setFilteredPrompts(processed);
             }
         } catch (err: any) {
-            setError('加载 Prompt 失败');
+            setError('同步云端数据失败');
+        } finally {
+            setRefreshing(false);
         }
     };
 
-    // 从内容中提取 #标签
     const extractTags = (content: string): string[] => {
         const matches = content.match(/#[\u4e00-\u9fa5\w]+/g);
         return matches ? [...new Set(matches)] : [];
     };
 
-    // 获取 Prompt 的纯内容（去掉标签行）
     const getPromptContent = useCallback((content: string): string => {
-        // 移除开头的标签行
         return content
-            .replace(/^#+\s*.*$/m, '') // 移除标题行
-            .replace(/^#[\u4e00-\u9fa5\w\s]+$/gm, '') // 移除纯标签行
+            .replace(/^#+\s*.*$/m, '') // 移除标题
+            .replace(/^#[\u4e00-\u9fa5\w\s]+$/gm, '') // 移除标签行
             .trim();
     }, []);
 
-    // 选择 Prompt 空间
     const handleSelectSpace = async (spaceId: string) => {
         setPromptSpaceId(spaceId);
         setShowSpaceSelector(false);
@@ -274,7 +269,6 @@ const Prompt: React.FC = () => {
         await loadPrompts(spaceId);
     };
 
-    // 记录使用历史
     const recordUsage = useCallback(async (promptId: string) => {
         const newRecord = { id: promptId, timestamp: Date.now() };
         setRecentUsed(prev => {
@@ -284,34 +278,22 @@ const Prompt: React.FC = () => {
         });
     }, []);
 
-    // 复制 Prompt
     const handleCopy = useCallback(async (prompt: PromptItem) => {
         const content = getPromptContent(prompt.content || '');
         const promptId = prompt._id || prompt.id || '';
 
-        console.log('[Prompt] handleCopy called:', promptId);
-        console.log('[Prompt] Content to copy:', content.substring(0, 100));
-
         try {
-            // 方法1: 使用 Clipboard API
             if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                 await navigator.clipboard.writeText(content);
-                console.log('[Prompt] Copied via Clipboard API');
             } else {
-                // 方法2: Fallback 使用 execCommand
                 const textArea = document.createElement('textarea');
                 textArea.value = content;
                 textArea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
-
                 try {
-                    const successful = document.execCommand('copy');
-                    console.log('[Prompt] execCommand result:', successful);
-                    if (!successful) {
-                        throw new Error('execCommand failed');
-                    }
+                    document.execCommand('copy');
                 } finally {
                     document.body.removeChild(textArea);
                 }
@@ -320,62 +302,30 @@ const Prompt: React.FC = () => {
             setCopiedId(promptId);
             setTimeout(() => setCopiedId(null), 2000);
             await recordUsage(promptId);
-            console.log('[Prompt] Copy successful');
         } catch (err) {
-            console.error('[Prompt] Copy failed:', err);
-            setError('复制失败: ' + (err as Error).message);
-            setTimeout(() => setError(''), 3000);
+            setError('复制功能受限');
         }
     }, [getPromptContent, recordUsage]);
 
-    // 置顶/取消置顶
     const handleTogglePin = useCallback(async (promptId: string) => {
-        console.log('[Prompt] handleTogglePin called:', promptId);
-
         setPinnedIds(prev => {
-            let updated: string[];
-            if (prev.includes(promptId)) {
-                updated = prev.filter(id => id !== promptId);
-            } else {
-                updated = [promptId, ...prev];
-            }
+            const updated = prev.includes(promptId)
+                ? prev.filter(id => id !== promptId)
+                : [promptId, ...prev];
             storage.set({ pinnedPrompts: updated });
             return updated;
         });
+    }, []);
 
-        // 更新列表中的状态
-        setPrompts(prev => prev.map(p => ({
-            ...p,
-            isPinned: pinnedIds.includes(p._id || p.id || '')
-        })));
-    }, [pinnedIds]);
-
-    // 切换展开
     const handleToggleExpand = useCallback((id: string) => {
-        console.log('[Prompt] handleToggleExpand called:', id);
         setExpandedId(prev => prev === id ? null : id);
     }, []);
 
-    // 快速插入到页面输入框
     const handleInsert = useCallback(async (prompt: PromptItem) => {
         const content = getPromptContent(prompt.content || '');
-        console.log('[Prompt] handleInsert called');
-        console.log('[Prompt] Content to insert:', content.substring(0, 50));
-
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            console.log('[Prompt] Current tab:', tab?.id, tab?.url);
-
-            if (!tab?.id) {
-                console.error('[Prompt] No active tab');
-                await handleCopy(prompt);
-                return;
-            }
-
-            // 检查是否是受限页面
-            const url = tab.url || '';
-            if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:')) {
-                console.log('[Prompt] Restricted page, falling back to copy');
+            if (!tab?.id || tab.url?.startsWith('chrome://')) {
                 await handleCopy(prompt);
                 return;
             }
@@ -383,74 +333,46 @@ const Prompt: React.FC = () => {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: (text: string) => {
-                    console.log('[Prompt Inject] Looking for input...');
-
                     const selectors = [
-                        'textarea[placeholder*="消息"]',
-                        'textarea[placeholder*="输入"]',
-                        'textarea[placeholder*="Message"]',
-                        'textarea:not([readonly]):not([disabled])',
-                        '[contenteditable="true"]',
-                        '[role="textbox"]',
-                        'input[type="text"]:not([readonly])'
+                        'textarea[placeholder*="消息"]', 'textarea[placeholder*="输入"]',
+                        'textarea[placeholder*="Message"]', 'textarea:not([readonly])',
+                        '[contenteditable="true"]', '[role="textbox"]'
                     ];
 
                     for (const selector of selectors) {
-                        const elements = document.querySelectorAll(selector);
-                        for (const el of elements) {
-                            const htmlEl = el as HTMLElement;
-                            const rect = htmlEl.getBoundingClientRect();
-                            if (rect.width === 0 || rect.height === 0) continue;
-
-                            const style = window.getComputedStyle(htmlEl);
-                            if (style.display === 'none' || style.visibility === 'hidden') continue;
-
-                            console.log('[Prompt Inject] Found:', selector);
-
-                            if (htmlEl.tagName === 'TEXTAREA' || htmlEl.tagName === 'INPUT') {
-                                (htmlEl as HTMLInputElement).value = text;
-                                htmlEl.dispatchEvent(new Event('input', { bubbles: true }));
-                                htmlEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        const el = document.querySelector(selector) as HTMLElement;
+                        if (el && el.getBoundingClientRect().width > 0) {
+                            if ('value' in el) {
+                                (el as any).value = text;
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
                             } else {
-                                htmlEl.textContent = text;
-                                htmlEl.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
+                                el.textContent = text;
+                                el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
                             }
-                            htmlEl.focus();
-                            return { success: true, selector };
+                            el.focus();
+                            return true;
                         }
                     }
-
-                    console.log('[Prompt Inject] No input found');
-                    return { success: false };
+                    return false;
                 },
                 args: [content]
             });
 
-            console.log('[Prompt] Script result:', results);
-
-            if (results && results[0]?.result?.success) {
+            if (results && results[0]?.result) {
                 setCopiedId(prompt._id || prompt.id || '');
                 setTimeout(() => setCopiedId(null), 2000);
                 await recordUsage(prompt._id || prompt.id || '');
             } else {
-                console.log('[Prompt] Insert failed, falling back to copy');
                 await handleCopy(prompt);
             }
-        } catch (err) {
-            console.error('[Prompt] Insert error:', err);
+        } catch {
             await handleCopy(prompt);
         }
     }, [getPromptContent, handleCopy, recordUsage]);
 
-    // 保存新 Prompt
     const handleSave = async () => {
         if (!newTitle.trim() || !newContent.trim()) {
-            setError('标题和内容不能为空');
-            return;
-        }
-
-        if (!promptSpaceId) {
-            setError('请先选择 Prompt 存储空间');
+            setError('请填写完整内容');
             return;
         }
 
@@ -459,14 +381,8 @@ const Prompt: React.FC = () => {
 
         try {
             const data = await storage.get();
-            if (!data.token || !data.userId) {
-                setError('请先登录');
-                return;
-            }
+            const client = new WriteathonClient(data.token!, data.userId!);
 
-            const client = new WriteathonClient(data.token, data.userId);
-
-            // 构建内容：标签 + 内容
             let fullContent = newContent.trim();
             if (newTags.trim()) {
                 const tags = newTags.split(/[\s,，]+/).filter(t => t).map(t => t.startsWith('#') ? t : `#${t}`);
@@ -489,13 +405,12 @@ const Prompt: React.FC = () => {
                 setError(res.message || '保存失败');
             }
         } catch (err: any) {
-            setError(err.message || '保存失败');
+            setError('网络请求失败');
         } finally {
             setSaving(false);
         }
     };
 
-    // 计算分组数据
     const pinnedPrompts = useMemo(() =>
         filteredPrompts.filter(p => pinnedIds.includes(p._id || p.id || '')),
         [filteredPrompts, pinnedIds]
@@ -509,36 +424,32 @@ const Prompt: React.FC = () => {
     const recentPrompts = useMemo(() =>
         recentUsed
             .slice(0, 5)
-            .map(r => {
-                const prompt = prompts.find(p => (p._id || p.id) === r.id);
-                return prompt ? { ...prompt, usedAt: r.timestamp } : null;
-            })
+            .map(r => prompts.find(p => (p._id || p.id) === r.id))
             .filter(Boolean) as PromptItem[],
         [recentUsed, prompts]
     );
 
-    // 如果没有选择 Prompt 空间
     if (!promptSpaceId && !loading) {
         return (
-            <div className="flex flex-col h-full bg-white p-4">
+            <div className="flex flex-col h-full bg-white p-6 animate-in fade-in duration-500">
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-4">
-                        <FolderOpen className="h-8 w-8 text-teal-500" />
+                    <div className="w-20 h-20 bg-teal-50 rounded-3xl rotate-12 flex items-center justify-center mb-6 shadow-sm">
+                        <FolderOpen className="h-10 w-10 text-teal-500 -rotate-12" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-800 mb-2">选择 Prompt 存储空间</h3>
-                    <p className="text-sm text-gray-500 mb-6 max-w-[250px]">
-                        请选择一个写拉松空间来存储你的 Prompt，建议创建专门的空间
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">选择 Prompt 存储空间</h3>
+                    <p className="text-sm text-gray-400 mb-8 max-w-[220px]">
+                        为了保持写拉松的整洁，建议选择或创建一个专门存放 Prompt 的空间。
                     </p>
 
-                    <div className="w-full space-y-2">
+                    <div className="w-full space-y-3">
                         {spaces.map(space => (
                             <button
                                 key={space._id || space.id}
                                 type="button"
                                 onClick={() => handleSelectSpace(space._id || space.id || '')}
-                                className="w-full p-3 text-left rounded-lg border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-all"
+                                className="w-full p-4 text-left rounded-xl border border-gray-100 bg-gray-50/50 hover:border-teal-400 hover:bg-teal-50 transition-all group"
                             >
-                                <span className="font-medium text-gray-700">{space.title}</span>
+                                <span className="font-semibold text-gray-700 group-hover:text-teal-700">{space.title}</span>
                             </button>
                         ))}
                     </div>
@@ -548,95 +459,72 @@ const Prompt: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full bg-white relative">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-gray-50 bg-white sticky top-0 z-10">
-                {/* 空间选择器 */}
-                <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
+            {/* Header Area */}
+            <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100 shadow-sm sticky top-0 z-30">
+                <div className="flex items-center justify-between mb-4">
                     <button
                         type="button"
                         onClick={() => setShowSpaceSelector(!showSpaceSelector)}
-                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-teal-600"
+                        className="group flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-full hover:bg-teal-50 transition-colors"
                     >
-                        <FolderOpen className="h-3.5 w-3.5" />
-                        <span>{spaces.find(s => (s._id || s.id) === promptSpaceId)?.title || 'Prompt 空间'}</span>
-                        <ChevronDown className="h-3 w-3" />
+                        <FolderOpen className="h-3.5 w-3.5 text-gray-400 group-hover:text-teal-500" />
+                        <span className="text-[11px] font-bold text-gray-600 group-hover:text-teal-700 truncate max-w-[120px]">
+                            {spaces.find(s => (s._id || s.id) === promptSpaceId)?.title || 'Prompt 空间'}
+                        </span>
+                        <ChevronDown className={`h-3 w-3 text-gray-400 group-hover:text-teal-500 transition-transform ${showSpaceSelector ? 'rotate-180' : ''}`} />
                     </button>
+
                     <button
                         type="button"
                         onClick={() => loadPrompts(promptSpaceId)}
-                        className="text-xs text-gray-400 hover:text-teal-600"
+                        disabled={refreshing}
+                        className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors bg-gray-50 rounded-lg"
                     >
-                        刷新
+                        <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-teal-500' : ''}`} />
                     </button>
                 </div>
 
-                {/* 空间下拉列表 */}
-                {showSpaceSelector && (
-                    <div className="absolute left-4 right-4 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
-                        {spaces.map(space => (
-                            <button
-                                key={space._id || space.id}
-                                type="button"
-                                onClick={() => handleSelectSpace(space._id || space.id || '')}
-                                className={`w-full px-3 py-2 text-left text-sm hover:bg-teal-50 ${(space._id || space.id) === promptSpaceId ? 'text-teal-600 bg-teal-50' : 'text-gray-700'
-                                    }`}
-                            >
-                                {space.title}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {/* 搜索和新建 */}
+                {/* Search & New */}
                 <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
+                    <div className="flex-1 relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 group-focus-within:text-teal-500 transition-colors" />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="搜索 Prompt..."
-                            className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                            placeholder="寻找你的灵感..."
+                            className="w-full h-10 pl-10 pr-4 rounded-xl border-transparent bg-gray-100 text-[13px] focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all"
                         />
                     </div>
                     <button
                         type="button"
                         onClick={() => setShowEditor(true)}
-                        className="h-9 px-3 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-1"
+                        className="h-10 px-4 bg-teal-600 text-white text-[13px] font-bold rounded-xl hover:bg-teal-700 transition-all shadow-md shadow-teal-700/10 active:scale-95 flex items-center gap-1.5 shrink-0"
                     >
-                        <Plus className="h-4 w-4" />
-                        新建
+                        <Plus className="h-4 w-4 stroke-[3px]" />
+                        <span>新建</span>
                     </button>
                 </div>
             </div>
 
-            {/* 内容区域 */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* List Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
-                    </div>
-                ) : error ? (
-                    <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-                        <AlertCircle className="h-4 w-4" />
-                        {error}
-                    </div>
-                ) : prompts.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                        <p className="text-sm">暂无 Prompt</p>
-                        <p className="text-xs mt-1">点击"新建"添加你的第一个 Prompt</p>
+                    <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+                        <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
+                        <p className="text-xs text-gray-400 font-medium">同步云端记忆...</p>
                     </div>
                 ) : (
                     <>
-                        {/* 置顶区域 */}
+                        {/* Pinned Section */}
                         {pinnedPrompts.length > 0 && (
-                            <div>
-                                <h4 className="flex items-center gap-1.5 text-xs font-medium text-amber-600 mb-2">
-                                    <Pin className="h-3.5 w-3.5" />
-                                    置顶
+                            <section className="animate-in fade-in slide-in-from-top-4 duration-500">
+                                <h4 className="flex items-center gap-2 text-[11px] font-black text-amber-600 uppercase tracking-widest mb-3 px-1">
+                                    <Pin className="h-3 w-3 fill-current" />
+                                    置顶收藏
                                 </h4>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     {pinnedPrompts.map(prompt => (
                                         <PromptCard
                                             key={prompt._id || prompt.id}
@@ -652,17 +540,17 @@ const Prompt: React.FC = () => {
                                         />
                                     ))}
                                 </div>
-                            </div>
+                            </section>
                         )}
 
-                        {/* 全部 Prompt */}
+                        {/* Normal List */}
                         {normalPrompts.length > 0 && (
-                            <div>
-                                <h4 className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-2">
-                                    <FolderOpen className="h-3.5 w-3.5" />
-                                    全部 Prompt
+                            <section className="animate-in fade-in slide-in-from-top-4 duration-700">
+                                <h4 className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                                    <FolderOpen className="h-3 w-3" />
+                                    所有库
                                 </h4>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     {normalPrompts.map(prompt => (
                                         <PromptCard
                                             key={prompt._id || prompt.id}
@@ -678,99 +566,114 @@ const Prompt: React.FC = () => {
                                         />
                                     ))}
                                 </div>
+                            </section>
+                        )}
+
+                        {!loading && filteredPrompts.length === 0 && (
+                            <div className="text-center py-20">
+                                <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Search className="h-6 w-6 text-gray-300" />
+                                </div>
+                                <p className="text-sm text-gray-400">没有找到相关 Prompt</p>
                             </div>
                         )}
 
-                        {/* 最近使用 */}
-                        {recentPrompts.length > 0 && (
-                            <div>
-                                <h4 className="flex items-center gap-1.5 text-xs font-medium text-gray-400 mb-2">
-                                    <Clock className="h-3.5 w-3.5" />
-                                    最近使用
-                                </h4>
-                                <div className="space-y-2">
-                                    {recentPrompts.map(prompt => (
-                                        <PromptCard
-                                            key={`recent-${prompt._id || prompt.id}`}
-                                            prompt={prompt}
-                                            showTime
-                                            isExpanded={expandedId === (prompt._id || prompt.id)}
-                                            isCopied={copiedId === (prompt._id || prompt.id)}
-                                            isPinned={pinnedIds.includes(prompt._id || prompt.id || '')}
-                                            onToggleExpand={handleToggleExpand}
-                                            onCopy={handleCopy}
-                                            onTogglePin={handleTogglePin}
-                                            onInsert={handleInsert}
-                                            getPromptContent={getPromptContent}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <div className="h-4" />
                     </>
                 )}
             </div>
 
-            {/* 新建/编辑弹窗 */}
+            {/* Space Dropdown */}
+            {showSpaceSelector && (
+                <div
+                    className="fixed inset-0 bg-black/5 z-40"
+                    onClick={() => setShowSpaceSelector(false)}
+                />
+            )}
+            <div className={`absolute left-4 right-4 top-14 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 transition-all duration-300 transform ${showSpaceSelector ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}`}>
+                <div className="p-2 max-h-60 overflow-y-auto scrollbar-thin">
+                    <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-tight">切换空间</div>
+                    {spaces.map(space => (
+                        <button
+                            key={space._id || space.id}
+                            type="button"
+                            onClick={() => handleSelectSpace(space._id || space.id || '')}
+                            className={`w-full px-3 py-2.5 text-left text-sm rounded-xl transition-all flex items-center justify-between group ${(space._id || space.id) === promptSpaceId
+                                    ? 'text-teal-600 bg-teal-50/50'
+                                    : 'text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <span className="font-semibold">{space.title}</span>
+                            {(space._id || space.id) === promptSpaceId && <Check className="h-4 w-4" />}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Editor Overlay */}
             {showEditor && (
-                <div className="absolute inset-0 bg-white z-30 flex flex-col">
-                    <div className="flex items-center justify-between px-4 py-3 border-b">
-                        <h3 className="font-medium text-gray-800">新建 Prompt</h3>
-                        <button type="button" onClick={() => setShowEditor(false)} className="p-1 text-gray-400 hover:text-gray-600">
+                <div className="absolute inset-0 bg-white z-[60] flex flex-col animate-in slide-in-from-bottom-full duration-300">
+                    <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
+                        <h3 className="text-lg font-black text-gray-800">创作新 Prompt</h3>
+                        <button
+                            type="button"
+                            onClick={() => setShowEditor(false)}
+                            className="p-2 text-gray-400 hover:text-gray-800 bg-gray-100 rounded-full transition-all active:scale-90"
+                        >
                             <X className="h-5 w-5" />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">标题</label>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">标题</label>
                             <input
                                 type="text"
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
-                                placeholder="Prompt 名称"
-                                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                                placeholder="给你的 Prompt 起个名字"
+                                className="w-full h-12 px-4 rounded-xl bg-gray-100 border-none text-[15px] font-bold text-gray-800 focus:bg-white focus:ring-4 focus:ring-teal-500/10 outline-none transition-all placeholder:text-gray-300"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">标签（可选，空格分隔）</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">标签</label>
                             <input
                                 type="text"
                                 value={newTags}
                                 onChange={(e) => setNewTags(e.target.value)}
-                                placeholder="#代码 #翻译"
-                                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                                placeholder="#写作 #代码 #周报"
+                                className="w-full h-12 px-4 rounded-xl bg-gray-100 border-none text-sm font-medium text-teal-600 focus:bg-white focus:ring-4 focus:ring-teal-500/10 outline-none transition-all placeholder:text-gray-300"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Prompt 内容</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-wider ml-1">Prompt 内容</label>
                             <textarea
                                 value={newContent}
                                 onChange={(e) => setNewContent(e.target.value)}
-                                placeholder="在这里输入或粘贴你的 Prompt..."
-                                className="w-full h-48 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none"
+                                placeholder="在这里详细描述你的指令..."
+                                className="w-full h-60 px-4 py-3 rounded-xl bg-gray-100 border-none text-sm leading-relaxed text-gray-700 focus:bg-white focus:ring-4 focus:ring-teal-500/10 outline-none transition-all resize-none scrollbar-thin placeholder:text-gray-300"
                             />
                         </div>
 
                         {error && (
-                            <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                            <div className="flex items-center gap-2 p-4 bg-red-50 text-red-600 text-[13px] font-semibold rounded-xl animate-bounce">
                                 <AlertCircle className="h-4 w-4" />
                                 {error}
                             </div>
                         )}
                     </div>
 
-                    <div className="p-4 border-t">
+                    <div className="p-6 border-t border-gray-50 flex gap-3">
                         <button
                             type="button"
                             onClick={handleSave}
                             disabled={saving || !newTitle.trim() || !newContent.trim()}
-                            className="w-full h-10 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="flex-1 h-12 bg-teal-600 text-white font-black rounded-xl hover:bg-teal-700 transition-all shadow-lg shadow-teal-700/20 disabled:opacity-50 active:scale-[0.98] flex items-center justify-center gap-2"
                         >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            保存到写拉松
+                            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5 stroke-[3px]" />}
+                            保存到云端
                         </button>
                     </div>
                 </div>
