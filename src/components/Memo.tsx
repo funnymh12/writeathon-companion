@@ -187,7 +187,7 @@ const Memo: React.FC = () => {
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <option value="">默认空间</option>
-                        {spaces.map((space) => {
+                        {spaces.filter(s => s.title !== '默认空间').map((space) => {
                             const id = space._id || space.id;
                             return (
                                 <option key={id} value={id}>
