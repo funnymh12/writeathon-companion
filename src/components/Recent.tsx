@@ -362,7 +362,7 @@ const Recent: React.FC = () => {
                                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white transition-colors disabled:opacity-50 ${status === 'success'
                                             ? 'bg-green-600'
                                             : isEditing
-                                                ? 'bg-blue-600 hover:bg-blue-700'
+                                                ? 'bg-teal-600 hover:bg-teal-700'
                                                 : 'bg-green-600 hover:bg-green-700'
                                             }`}
                                     >
@@ -426,7 +426,7 @@ const Recent: React.FC = () => {
                                 placeholder="搜索卡片..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                                className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300"
                             />
                             {searchQuery && (
                                 <button

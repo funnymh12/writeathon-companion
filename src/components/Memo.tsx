@@ -216,7 +216,7 @@ const Memo: React.FC = () => {
                         </label>
                         <button
                             onClick={pasteFromClipboard}
-                            className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1"
+                            className="text-xs text-teal-500 hover:text-teal-600 flex items-center gap-1"
                             title="从剪贴板粘贴"
                         >
                             <Clipboard className="h-3 w-3" />

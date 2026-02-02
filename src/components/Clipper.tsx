@@ -356,7 +356,7 @@ const Clipper: React.FC = () => {
                     <button
                         onClick={handleClip}
                         disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-600 rounded-lg font-bold text-sm hover:bg-blue-100 transition-colors border border-blue-100"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-teal-50 text-teal-600 rounded-lg font-bold text-sm hover:bg-teal-100 transition-colors border border-teal-100"
                     >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         提取页面内容
@@ -417,7 +417,7 @@ const Clipper: React.FC = () => {
                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                         {/* Stats */}
                         <div className="flex gap-4 text-xs text-muted-foreground">
-                            <span className={stats.words > 4500 ? 'text-blue-500 font-bold' : ''}>{stats.words} 字</span>
+                            <span className={stats.words > 4500 ? 'text-teal-500 font-bold' : ''}>{stats.words} 字</span>
                             <span>{stats.images} 图</span>
                             <span>{stats.links} 链</span>
                             {useAttachments && extractedImages.length > 0 && (
@@ -427,7 +427,7 @@ const Clipper: React.FC = () => {
 
                         {/* Content Length Info */}
                         {stats.words > 4500 && (
-                            <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-xs">
+                            <div className="p-2 bg-teal-50 border border-teal-200 rounded-lg text-teal-700 text-xs">
                                 📝 内容较长（{stats.words} 字），将自动分成 {Math.ceil(stats.words / 4500)} 部分追加保存
                             </div>
                         )}
