@@ -15,6 +15,50 @@ function App() {
 
     useEffect(() => {
         checkAuth();
+
+        // Shortcut listener
+        const handleKeyDown = async (e: KeyboardEvent) => {
+            // Ignore if in input
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+            const data = await storage.get();
+            const shortcuts = data.shortcuts || {
+                toggleMemo: 'Alt+1',
+                toggleRecent: 'Alt+2',
+                toggleClip: 'Alt+3'
+            };
+
+            const getKeyString = (ev: KeyboardEvent) => {
+                const parts = [];
+                if (ev.ctrlKey) parts.push('Ctrl');
+                if (ev.altKey) parts.push('Alt');
+                if (ev.shiftKey) parts.push('Shift');
+                if (ev.metaKey) parts.push('Meta');
+
+                let key = ev.key.toUpperCase();
+                if (['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) return null;
+                if (key === ' ') key = 'Space';
+                if (key === 'ENTER') key = 'Enter';
+
+                parts.push(key);
+                return parts.join('+');
+            };
+
+            const pressed = getKeyString(e);
+            if (!pressed) return;
+
+            if (pressed === shortcuts.toggleMemo) {
+                setActiveTab('memo');
+            } else if (pressed === shortcuts.toggleRecent) {
+                setActiveTab('recent');
+            } else if (pressed === shortcuts.toggleClip) {
+                setActiveTab('clip');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     const checkAuth = async () => {

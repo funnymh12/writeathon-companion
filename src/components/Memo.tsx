@@ -14,11 +14,43 @@ const Memo: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [error, setError] = useState('');
 
+    const [quickSendKey, setQuickSendKey] = useState('Ctrl+Enter');
+
     useEffect(() => {
         fetchSpaces();
         // Try to get selected text from the page
         getSelectedText();
+        // Load shortcut
+        storage.get().then(data => {
+            if (data.shortcuts && data.shortcuts.quickSend) {
+                setQuickSendKey(data.shortcuts.quickSend);
+            }
+        });
     }, []);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        const getKeyString = (ev: React.KeyboardEvent) => {
+            const parts = [];
+            if (ev.ctrlKey) parts.push('Ctrl');
+            if (ev.altKey) parts.push('Alt');
+            if (ev.shiftKey) parts.push('Shift');
+            if (ev.metaKey) parts.push('Meta');
+
+            let key = ev.key.toUpperCase();
+            if (['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) return null;
+            if (key === ' ') key = 'Space';
+            if (key === 'ENTER') key = 'Enter';
+
+            parts.push(key);
+            return parts.join('+');
+        };
+
+        const pressed = getKeyString(e);
+        if (pressed === quickSendKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
 
     const fetchSpaces = async () => {
         setLoading(true);
@@ -208,6 +240,7 @@ const Memo: React.FC = () => {
                         placeholder="给卡片起个标题..."
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                 </div>
@@ -247,6 +280,7 @@ const Memo: React.FC = () => {
                             placeholder="粘贴或输入要引用的原文..."
                             value={quote}
                             onChange={(e) => setQuote(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             rows={2}
                             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none text-gray-600"
                         />
@@ -266,6 +300,7 @@ const Memo: React.FC = () => {
                         placeholder={quote ? "写下你的批注、想法..." : "写点什么..."}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         rows={quote ? 4 : 8}
                         className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none min-h-[100px]"
                     />

@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { WriteathonClient } from '../utils/api';
-import { Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ArrowLeft, Keyboard } from 'lucide-react';
+
+interface Shortcuts {
+    toggleMemo: string;
+    toggleRecent: string;
+    toggleClip: string;
+    quickSend: string;
+    globalClip: string;
+}
+
+const DEFAULT_SHORTCUTS: Shortcuts = {
+    toggleMemo: 'Alt+1',
+    toggleRecent: 'Alt+2',
+    toggleClip: 'Alt+3',
+    quickSend: 'Ctrl+Enter',
+    globalClip: 'Alt+S'
+};
 
 interface SettingsProps {
     onSuccess: () => void;
@@ -15,6 +31,8 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
     const [error, setError] = useState('');
     const [status, setStatus] = useState<'idle' | 'connected'>('idle');
     const [username, setUsername] = useState('');
+    const [shortcuts, setShortcuts] = useState<Shortcuts>(DEFAULT_SHORTCUTS);
+    const [savingShortcuts, setSavingShortcuts] = useState(false);
 
     useEffect(() => {
         const loadStored = async () => {
@@ -25,6 +43,9 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                     setUsername(data.username);
                     setStatus('connected');
                 }
+            }
+            if (data.shortcuts) {
+                setShortcuts({ ...DEFAULT_SHORTCUTS, ...data.shortcuts });
             }
         };
         loadStored();
@@ -65,7 +86,56 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
         setToken('');
         setUsername('');
         setStatus('idle');
+        setShortcuts(DEFAULT_SHORTCUTS);
     };
+
+    const handleShortcutChange = (key: keyof Shortcuts, value: string) => {
+        const newShortcuts = { ...shortcuts, [key]: value };
+        setShortcuts(newShortcuts);
+        // Auto save
+        setSavingShortcuts(true);
+        storage.set({ shortcuts: newShortcuts }).then(() => {
+            setTimeout(() => setSavingShortcuts(false), 500);
+        });
+    };
+
+    const ShortcutInput = ({ label, value, shortcutKey }: { label: string, value: string, shortcutKey: keyof Shortcuts }) => (
+        <div className="flex items-center justify-between py-2">
+            <span className="text-sm text-gray-700">{label}</span>
+            <div className="relative group">
+                <input
+                    type="text"
+                    value={value}
+                    readOnly
+                    className="w-32 px-2 py-1 text-xs text-center border rounded bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer hover:bg-white"
+                    onKeyDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const parts = [];
+                        if (e.ctrlKey) parts.push('Ctrl');
+                        if (e.altKey) parts.push('Alt');
+                        if (e.shiftKey) parts.push('Shift');
+                        if (e.metaKey) parts.push('Meta');
+
+                        let key = e.key.toUpperCase();
+                        if (['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) return;
+                        if (key === ' ') key = 'Space';
+                        if (key === 'ENTER') key = 'Enter';
+
+                        parts.push(key);
+                        if (parts.length > 0) {
+                            handleShortcutChange(shortcutKey, parts.join('+'));
+                        }
+                    }}
+                    placeholder="按下快捷键..."
+                />
+                <div className="absolute hidden group-hover:block bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-[10px] rounded whitespace-nowrap">
+                    点击并按下快捷键
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="flex flex-col gap-6 p-4">
@@ -138,6 +208,33 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                             '连接'
                         )}
                     </button>
+                </div>
+            )}
+
+            {/* Shortcuts Section */}
+            {status === 'connected' && (
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <Keyboard className="h-4 w-4 text-gray-500" />
+                        <h3 className="text-sm font-medium text-gray-900">快捷键设置</h3>
+                        {savingShortcuts && <span className="text-[10px] text-green-600 animate-pulse">已保存</span>}
+                    </div>
+
+                    <div className="space-y-1 bg-white rounded-lg border border-gray-100 p-3">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">插件内导航</div>
+                        <ShortcutInput label="切换到速记" value={shortcuts.toggleMemo} shortcutKey="toggleMemo" />
+                        <ShortcutInput label="切换到最近" value={shortcuts.toggleRecent} shortcutKey="toggleRecent" />
+                        <ShortcutInput label="切换到剪藏" value={shortcuts.toggleClip} shortcutKey="toggleClip" />
+
+                        <div className="h-px bg-gray-50 my-2"></div>
+
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">操作</div>
+                        <ShortcutInput label="发送/保存 (速记/剪藏)" value={shortcuts.quickSend} shortcutKey="quickSend" />
+                        <ShortcutInput label="全局选取剪藏 (网页中)" value={shortcuts.globalClip} shortcutKey="globalClip" />
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                        * 全局快捷键在任何网页都可触发（需刷新网页生效）
+                    </p>
                 </div>
             )}
 

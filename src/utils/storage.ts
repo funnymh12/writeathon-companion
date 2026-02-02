@@ -4,6 +4,13 @@ export interface AppStorage {
     username?: string;
     selectedSpaceId?: string;
     selectedSpaceName?: string;
+    shortcuts?: {
+        toggleMemo: string;
+        toggleRecent: string;
+        toggleClip: string;
+        quickSend: string;
+        globalClip: string;
+    };
 }
 
 export const storage = {

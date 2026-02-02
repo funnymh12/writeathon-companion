@@ -119,6 +119,59 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
 });
 
+// 处理来自 Content Script 的消息 (全局快捷键)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'CLIP_SELECTION') {
+        const { title, url, selection } = message.payload;
+        const tabId = sender.tab?.id;
+
+        handleQuickClip(tabId, title, url, selection);
+
+        // 必须返回 true 以支持异步 sendResponse，或者不需要返回直接结束
+        // 这里不需要回复
+    }
+});
+
+async function handleQuickClip(tabId, pageTitle, pageUrl, selectedText) {
+    if (!selectedText) {
+        showNotification(tabId, '提示', '请先选中要剪藏的文字', true);
+        return;
+    }
+
+    const stored = await chrome.storage.local.get(['token', 'userId', 'selectedSpaceId', 'selectedSpaceName']);
+
+    if (!stored.token || !stored.userId) {
+        showNotification(tabId, '未登录', '请先点击插件图标进行登录', true);
+        return;
+    }
+
+    const { token, userId, selectedSpaceId, selectedSpaceName } = stored;
+    const spaceNameDisplay = selectedSpaceName ? `(${selectedSpaceName})` : '';
+
+    try {
+        await sendToWriteathon({
+            token,
+            userId,
+            spaceId: selectedSpaceId,
+            title: pageTitle,
+            content: selectedText,
+            attachments: [{
+                type: 'link',
+                title: pageTitle,
+                url: pageUrl,
+                from: 'default'
+            }]
+        });
+
+        showNotification(tabId, '发送成功', `已将选中文字保存到写拉松 ${spaceNameDisplay}`);
+    } catch (error) {
+        console.error('快捷保存失败:', error);
+        const code = error.errorCode ? `[${error.errorCode}] ` : '';
+        const spaceInfo = selectedSpaceName ? ` (${selectedSpaceName})` : '';
+        showNotification(tabId, '保存失败', `${code}${error.message || '未知错误'}${spaceInfo}`, true);
+    }
+}
+
 // 发送数据到写拉松API
 async function sendToWriteathon({ token, userId, spaceId, title, content, attachments }) {
     const body = {
