@@ -24,6 +24,7 @@ const Recent: React.FC = () => {
     // Extend mode
     const [isExtending, setIsExtending] = useState(false);
     const [extensionContent, setExtensionContent] = useState('');
+    const [extensionTitle, setExtensionTitle] = useState('');
 
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -53,7 +54,7 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
-                const response = await client.getRecentCards(true);
+                const response = await client.getRecentCards(false);
                 if (response.success && response.data) {
                     setCards(response.data);
                     setFilteredCards(response.data);
@@ -172,10 +173,15 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
-                const response = await client.extendCard(selectedCard._id || selectedCard.id || '', extensionContent);
+                const response = await client.extendCard(
+                    selectedCard._id || selectedCard.id || '',
+                    extensionContent,
+                    extensionTitle.trim() || undefined
+                );
 
                 if (response.success) {
                     setExtensionContent('');
+                    setExtensionTitle('');
                     setStatus('success');
                     setIsExtending(false);
                     setTimeout(() => setStatus('idle'), 2000);
@@ -308,13 +314,20 @@ const Recent: React.FC = () => {
                                 <div className="space-y-3 bg-green-50 p-4 rounded-lg border border-green-100">
                                     <label className="text-[10px] font-bold text-green-700 uppercase tracking-widest flex items-center gap-1">
                                         <Plus className="h-3 w-3" />
-                                        添加扩展内容
+                                        添加扩展卡片
                                     </label>
+                                    <input
+                                        type="text"
+                                        placeholder="标题（可选）"
+                                        value={extensionTitle}
+                                        onChange={(e) => setExtensionTitle(e.target.value)}
+                                        className="flex h-10 w-full rounded-md border border-green-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-300"
+                                    />
                                     <textarea
                                         placeholder="输入要追加的内容..."
                                         value={extensionContent}
                                         onChange={(e) => setExtensionContent(e.target.value)}
-                                        rows={6}
+                                        rows={5}
                                         className="flex w-full rounded-md border border-green-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-300 resize-none"
                                     />
                                 </div>
@@ -337,6 +350,7 @@ const Recent: React.FC = () => {
                                             setEditTitle(selectedCard.title || '');
                                             setEditContent(selectedCard.content || '');
                                             setExtensionContent('');
+                                            setExtensionTitle('');
                                         }}
                                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                                     >
