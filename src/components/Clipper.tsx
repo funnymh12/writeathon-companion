@@ -150,6 +150,69 @@ const Clipper: React.FC = () => {
         }
     };
 
+    // --- Link Parsing Logic ---
+    const handleParseLink = async () => {
+        if (!dataUrl) {
+            setError('请输入有效的链接地址');
+            return;
+        }
+
+        // Basic URL validation
+        if (!dataUrl.startsWith('http')) {
+            setError('链接必须以 http 或 https 开头');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            const response = await fetch(dataUrl);
+            if (!response.ok) throw new Error('网络请求失败');
+            const html = await response.text();
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Extract Title
+            const parsedTitle = doc.querySelector('title')?.innerText || '';
+
+            // Extract Content (Simple Heuristic)
+            // 1. Remove script/style
+            doc.querySelectorAll('script, style, nav, header, footer, iframe, noscript').forEach(el => el.remove());
+
+            // 2. Try to find article content
+            const article = doc.querySelector('article') || doc.querySelector('main') || doc.querySelector('.article') || doc.querySelector('.content') || doc.body;
+            let parsedContent = article ? (article as HTMLElement).innerText : '';
+
+            // Cleanup whitespace
+            parsedContent = parsedContent
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .join('\n\n');
+
+            setTitle(parsedTitle || '未命名链接');
+            setContent(parsedContent.substring(0, 10000)); // Safety limit
+
+            // Stats
+            setStats({
+                words: parsedContent.length,
+                images: doc.querySelectorAll('img').length,
+                links: doc.querySelectorAll('a').length
+            });
+
+            // Set source url
+            setSourceUrl(dataUrl);
+
+        } catch (err: any) {
+            console.error('Parse error:', err);
+            setError('解析失败，可能是由于跨域限制或链接无法访问');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // --- Image Mode Logic ---
     const handleFetchPageImages = async () => {
         setLoading(true);
@@ -360,8 +423,8 @@ const Clipper: React.FC = () => {
             let finalContent = content;
             let finalTitle = title;
 
-            // Link Mode handling
-            if (mode === 'link') {
+            // Link Mode handling (Fallback if no content parsed)
+            if (mode === 'link' && !content.trim()) {
                 if (!dataUrl) { setError('请输入 URLs'); setSending(false); return; }
                 finalTitle = title || '网页链接';
                 finalContent = `[${title || dataUrl}](${dataUrl})\n\n> 链接剪藏`;
@@ -376,20 +439,24 @@ const Clipper: React.FC = () => {
             }
 
             const MAX_CHUNK_SIZE = 4500;
-            const chunks = mode === 'page' ? splitContent(finalContent, MAX_CHUNK_SIZE) : [finalContent];
+            // Use splitContent if we have real content (Page mode or Link mode with parsed content)
+            const hasRealContent = mode === 'page' || (mode === 'link' && content.trim().length > 0);
+            const chunks = hasRealContent ? splitContent(finalContent, MAX_CHUNK_SIZE) : [finalContent];
+
             const totalChunks = chunks.length;
             const cardTitle = finalTitle.trim() || `剪藏 ${new Date().toLocaleString('zh-CN')}`;
 
             for (let i = 0; i < chunks.length; i++) {
                 let chunkContent = chunks[i];
 
-                if (mode === 'page' && totalChunks > 1) {
+                if (hasRealContent && totalChunks > 1) {
                     chunkContent = `**[${i + 1}/${totalChunks}]**\n\n${chunkContent}`;
                 }
 
-                // Add source URL if Page Mode
-                if (mode === 'page' && i === 0 && saveUrl && sourceUrl) {
-                    chunkContent += `\n\n> Source: [${sourceUrl}](${sourceUrl})`;
+                // Add source URL if Page Mode or Link Mode (parsed)
+                const currentSourceUrl = mode === 'link' ? dataUrl : sourceUrl;
+                if (hasRealContent && i === 0 && saveUrl && currentSourceUrl) {
+                    chunkContent += `\n\n> Source: [${currentSourceUrl}](${currentSourceUrl})`;
                 }
 
                 const params: any = {
@@ -525,7 +592,6 @@ const Clipper: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- Link Mode --- */}
                 {mode === 'link' && (
                     <div className="space-y-4 pt-4">
                         <div className="space-y-2">
@@ -535,28 +601,47 @@ const Clipper: React.FC = () => {
                                     type="url"
                                     value={dataUrl}
                                     onChange={(e) => setDataUrl(e.target.value)}
-                                    placeholder="https://..."
-                                    className="flex-1 h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                                    placeholder="https://example.com/article"
+                                    className="flex-1 h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none font-mono text-xs"
                                 />
                                 <button
-                                    onClick={() => {/* Mock Parse */ setTitle('解析的链接标题'); }}
-                                    className="px-3 h-9 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200"
-                                    title="自动获取标题(模拟)"
+                                    onClick={handleParseLink}
+                                    disabled={loading}
+                                    className="px-4 h-9 bg-teal-50 text-teal-600 text-xs font-medium rounded-lg hover:bg-teal-100 transition-colors flex items-center gap-1"
                                 >
+                                    {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                                     解析
                                 </button>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-medium text-gray-500">标题/备注</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="输入标题..."
-                                className="w-full h-9 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                            />
-                        </div>
+
+                        {/* Editor for Parsed Content (Same as Page Mode) */}
+                        {content ? (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 border-t border-gray-50 pt-4">
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full text-lg font-bold text-gray-800 placeholder:text-gray-300 border-none focus:ring-0 px-0 py-1 bg-transparent"
+                                    placeholder="标题"
+                                />
+                                <div className="flex items-center gap-4 text-[10px] text-gray-400">
+                                    <span>{stats.words} 字</span>
+                                    <span className="text-teal-500">已解析内容</span>
+                                </div>
+                                <textarea
+                                    value={content}
+                                    onChange={(e) => handleContentChange(e.target.value)}
+                                    className="w-full text-sm leading-relaxed text-gray-600 placeholder:text-gray-300 border-none focus:ring-0 px-0 py-0 bg-transparent min-h-[300px] resize-none font-serif"
+                                    placeholder="解析的内容..."
+                                />
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-300 text-xs">
+                                <LinkIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                <p>输入链接点击解析，将自动提取纯文本内容</p>
+                            </div>
+                        )}
                     </div>
                 )}
 
