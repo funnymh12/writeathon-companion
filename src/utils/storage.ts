@@ -16,7 +16,7 @@ export interface AppStorage {
 export const storage = {
     get: async (): Promise<AppStorage> => {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName'], (result) => {
+            chrome.storage.local.get(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName', 'shortcuts'], (result) => {
                 resolve(result);
             });
         });
@@ -30,7 +30,7 @@ export const storage = {
     },
     clear: async (): Promise<void> => {
         return new Promise((resolve) => {
-            chrome.storage.local.remove(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName'], () => {
+            chrome.storage.local.remove(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName', 'shortcuts'], () => {
                 resolve();
             });
         });
