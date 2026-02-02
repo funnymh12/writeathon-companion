@@ -16,7 +16,8 @@ export interface Space {
 }
 
 export interface Card {
-    _id: string;
+    _id?: string;
+    id?: string;  // 拾贝API返回的是id而不是_id
     title: string;
     content?: string;
     created?: string;

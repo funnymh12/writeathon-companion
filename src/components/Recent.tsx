@@ -102,7 +102,7 @@ const Recent: React.FC = () => {
                     setEditContent(card.content || '');
                     setView('detail');
                 } else {
-                    const response = await client.getCardDetail(card._id);
+                    const response = await client.getCardDetail(card._id || card.id || '');
                     if (response.success && response.data) {
                         setSelectedCard(response.data);
                         setEditTitle(response.data.title || '');
@@ -172,7 +172,7 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
-                const response = await client.extendCard(selectedCard._id, extensionContent);
+                const response = await client.extendCard(selectedCard._id || selectedCard.id || '', extensionContent);
 
                 if (response.success) {
                     setExtensionContent('');
@@ -470,7 +470,7 @@ const Recent: React.FC = () => {
                         <div className="divide-y divide-gray-100">
                             {filteredCards.map((card) => (
                                 <button
-                                    key={card._id}
+                                    key={card._id || card.id}
                                     onClick={() => handleCardClick(card)}
                                     className="w-full text-left p-4 hover:bg-gray-50 flex items-center justify-between group transition-colors bg-white"
                                 >
@@ -499,7 +499,7 @@ const Recent: React.FC = () => {
                         <div className="p-4 space-y-3">
                             {pickedCards.map((card, index) => (
                                 <button
-                                    key={card._id || index}
+                                    key={card._id || card.id || index}
                                     onClick={() => handleCardClick(card)}
                                     className="w-full text-left p-4 bg-white rounded-lg border border-gray-100 hover:border-amber-200 hover:shadow-sm transition-all group"
                                 >
