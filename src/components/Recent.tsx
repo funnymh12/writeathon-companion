@@ -59,22 +59,18 @@ const Recent: React.FC = () => {
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
 
-                // 如果没有选择特定空间，利用“获取空间列表”接口能返回50张卡片的能力
-                if (!selectedSpace) {
-                    const response = await client.getSpaces();
-                    if (response.success && response.data) {
-                        // 根据文档备注，这个接口返回的是最近修改的50个卡片列表
-                        // 我们将其作为 cards 数据源
-                        setCards(response.data as any);
-                        setFilteredCards(response.data as any);
-                    }
+
+                // Always fetch recent cards. If selectedSpace is provided, it filters by space.
+                // Otherwise it returns the global recent list (usually 50 items).
+                const response = await client.getRecentCards(false, selectedSpace || undefined);
+
+                if (response.success && response.data) {
+                    setCards(response.data);
+                    setFilteredCards(response.data);
                 } else {
-                    // 如果选择了特定空间，依然使用原有的获取该空间最近卡片的接口
-                    const response = await client.getRecentCards(false, selectedSpace);
-                    if (response.success && response.data) {
-                        setCards(response.data);
-                        setFilteredCards(response.data);
-                    }
+                    // Handle case where data might be null or empty
+                    setCards([]);
+                    setFilteredCards([]);
                 }
             }
         } catch (err) {
@@ -422,8 +418,18 @@ const Recent: React.FC = () => {
                 </div>
 
                 {/* Space Selector (Micro) */}
-                {spaces.length > 0 && (
-                    <div className="flex items-center gap-1">
+                {/* Right Side Actions */}
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => activeTab === 'recent' ? fetchRecentCards() : fetchPickedCards()}
+                        className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors rounded-md hover:bg-gray-50"
+                        title="刷新"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    {spaces.length > 0 && (
                         <select
                             value={selectedSpace}
                             onChange={async (e) => {
@@ -432,16 +438,16 @@ const Recent: React.FC = () => {
                                 const spaceName = spaces.find(s => (s._id || s.id) === newSpaceId)?.title || '默认空间';
                                 await storage.set({ selectedSpaceId: newSpaceId, selectedSpaceName: spaceName });
                             }}
-                            className="bg-transparent text-xs text-gray-400 hover:text-teal-600 font-medium focus:outline-none cursor-pointer transition-colors dir-rtl text-right"
+                            className="bg-transparent text-xs text-gray-400 hover:text-teal-600 font-medium focus:outline-none cursor-pointer transition-colors dir-rtl text-right max-w-[80px]"
                         >
                             <option value="">所有空间</option>
-                            {spaces.filter(s => s.title !== '默认空间').map(s => {
+                            {spaces.map(s => {
                                 const title = s.title.length > 8 ? s.title.substring(0, 8) + '..' : s.title;
                                 return <option key={s._id || s.id} value={s._id || s.id}>{title}</option>;
                             })}
                         </select>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* 2. Search & Tools */}

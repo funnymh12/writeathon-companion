@@ -97,7 +97,11 @@ const AIChat: React.FC = () => {
     };
 
     const callGemini = async (config: any, history: Message[]) => {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+        const modelName = config.model.startsWith('models/') ? config.model.replace('models/', '') : config.model;
+        const baseUrl = config.baseUrl || 'https://generativelanguage.googleapis.com';
+        // Remove trailing slash if present
+        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+        const url = `${cleanBaseUrl}/v1beta/models/${modelName}:generateContent?key=${config.apiKey}`;
 
         const response = await fetch(url, {
             method: 'POST',
@@ -112,7 +116,24 @@ const AIChat: React.FC = () => {
 
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
-        return data.candidates[0].content.parts[0].text;
+
+        if (!data.candidates || data.candidates.length === 0) {
+            if (data.promptFeedback?.blockReason) {
+                throw new Error(`请求被屏蔽: ${data.promptFeedback.blockReason}`);
+            }
+            throw new Error('API 未返回有效内容，请检查模型权限或 API Key 状态');
+        }
+
+        const candidate = data.candidates[0];
+        if (candidate.finishReason === 'SAFETY') {
+            throw new Error('响应内容因安全策略被拦截');
+        }
+
+        if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+            throw new Error('模型返回了空内容');
+        }
+
+        return candidate.content.parts[0].text;
     };
 
     const callOpenAICompatible = async (provider: string, config: any, history: Message[]) => {
@@ -231,8 +252,8 @@ const AIChat: React.FC = () => {
                         </div>
 
                         <div className={`max-w-[90%] p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                                ? 'bg-teal-600 text-white rounded-tr-none'
-                                : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-100'
+                            ? 'bg-teal-600 text-white rounded-tr-none'
+                            : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-100'
                             }`}>
                             <div className="whitespace-pre-wrap break-words">{msg.content}</div>
 
@@ -298,8 +319,8 @@ const AIChat: React.FC = () => {
                         onClick={handleSend}
                         disabled={!input.trim() || isLoading}
                         className={`absolute right-2 bottom-2 p-2 rounded-xl transition-all ${input.trim() && !isLoading
-                                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20 hover:scale-105 active:scale-95'
-                                : 'bg-gray-100 text-gray-400'
+                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20 hover:scale-105 active:scale-95'
+                            : 'bg-gray-100 text-gray-400'
                             }`}
                     >
                         {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}

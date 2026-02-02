@@ -45,7 +45,7 @@ const DEFAULT_AI_CONFIG: AIConfig = {
     activeProvider: 'openai',
     providers: {
         openai: { apiKey: '', model: 'gpt-4o-mini' },
-        gemini: { apiKey: '', model: 'gemini-2.0-flash' },
+        gemini: { apiKey: '', model: 'gemini-2.0-flash', baseUrl: '' },
         deepseek: { apiKey: '', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
         doubao: { apiKey: '', model: '', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
         custom: { apiKey: '', model: '', baseUrl: '' }
@@ -53,9 +53,15 @@ const DEFAULT_AI_CONFIG: AIConfig = {
 };
 
 const PRESETS = {
-    openai: ['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o1-mini', 'gpt-5-preview'],
-    gemini: ['gemini-2.0-pro-exp', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-exp-1206'],
-    deepseek: ['deepseek-chat', 'deepseek-v3', 'deepseek-r1'],
+    openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini', 'o1'],
+    gemini: [
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-thinking-exp-01-21',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-1.0-pro'
+    ],
+    deepseek: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v3', 'deepseek-r1'],
     doubao: ['ep-2025...', 'ep-2024...']
 };
 
@@ -416,14 +422,17 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                             </div>
                         </div>
 
-                        {(activeAiTab === 'custom' || aiConfig.providers[activeAiTab].baseUrl) && (
+                        {(activeAiTab === 'custom' || activeAiTab === 'gemini' || aiConfig.providers[activeAiTab].baseUrl) && (
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">接口地址 (Base URL)</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">
+                                    接口地址 (Base URL)
+                                    {activeAiTab === 'gemini' && <span className="ml-1 text-gray-300 font-normal normal-case">- 选填，用于代理访问</span>}
+                                </label>
                                 <input
                                     type="text"
                                     value={aiConfig.providers[activeAiTab].baseUrl || ''}
                                     onChange={(e) => handleAiConfigChange(activeAiTab, 'baseUrl', e.target.value)}
-                                    placeholder="https://api.openai.com/v1"
+                                    placeholder={activeAiTab === 'gemini' ? 'https://generativelanguage.googleapis.com' : 'https://api.openai.com/v1'}
                                     className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all font-mono"
                                 />
                             </div>
