@@ -14,9 +14,22 @@ export interface AppStorage {
         toggleRecent: string;
         toggleClip: string;
         togglePrompt: string;
+        toggleChat: string; // 新增 AI Chat 快捷键
         quickSend: string;
         globalClip: string;
     };
+    // AI Chat 相关配置
+    aiConfig?: {
+        activeProvider: 'openai' | 'gemini' | 'deepseek' | 'doubao' | 'custom';
+        providers: {
+            openai: { apiKey: string; model: string; baseUrl?: string };
+            gemini: { apiKey: string; model: string };
+            deepseek: { apiKey: string; model: string; baseUrl?: string };
+            doubao: { apiKey: string; model: string; baseUrl?: string };
+            custom: { apiKey: string; model: string; baseUrl: string };
+        };
+    };
+    chatHistory?: { role: 'user' | 'assistant'; content: string; timestamp: number }[];
 }
 
 export const storage = {
@@ -24,7 +37,8 @@ export const storage = {
         return new Promise((resolve) => {
             chrome.storage.local.get([
                 'token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName',
-                'imgbbApiKey', 'shortcuts', 'promptSpaceId', 'pinnedPrompts', 'recentUsedPrompts'
+                'imgbbApiKey', 'shortcuts', 'promptSpaceId', 'pinnedPrompts', 'recentUsedPrompts',
+                'aiConfig', 'chatHistory'
             ], (result) => {
                 resolve(result);
             });

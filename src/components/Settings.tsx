@@ -1,22 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { WriteathonClient } from '../utils/api';
-import { Loader2, CheckCircle, XCircle, ArrowLeft, Keyboard } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ArrowLeft, Keyboard, Send, Sparkles } from 'lucide-react';
 
 interface Shortcuts {
     toggleMemo: string;
     toggleRecent: string;
     toggleClip: string;
     togglePrompt: string;
+    toggleChat: string;
     quickSend: string;
     globalClip: string;
 }
+
+interface AIProviderConfig {
+    apiKey: string;
+    model: string;
+    baseUrl?: string;
+}
+
+interface AIConfig {
+    activeProvider: 'openai' | 'gemini' | 'deepseek' | 'doubao' | 'custom';
+    providers: {
+        openai: AIProviderConfig;
+        gemini: AIProviderConfig;
+        deepseek: AIProviderConfig;
+        doubao: AIProviderConfig;
+        custom: AIProviderConfig & { baseUrl: string };
+    };
+}
+
+const DEFAULT_AI_CONFIG: AIConfig = {
+    activeProvider: 'openai',
+    providers: {
+        openai: { apiKey: '', model: 'gpt-4o' },
+        gemini: { apiKey: '', model: 'gemini-1.5-flash' },
+        deepseek: { apiKey: '', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
+        doubao: { apiKey: '', model: 'ep-xxx', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
+        custom: { apiKey: '', model: '', baseUrl: '' }
+    }
+};
 
 const DEFAULT_SHORTCUTS: Shortcuts = {
     toggleMemo: 'Alt+1',
     toggleRecent: 'Alt+2',
     toggleClip: 'Alt+3',
     togglePrompt: 'Alt+4',
+    toggleChat: 'Alt+5',
     quickSend: 'Ctrl+Enter',
     globalClip: 'Alt+S'
 };
@@ -38,6 +68,11 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
     const [imgbbApiKey, setImgbbApiKey] = useState('');
     const [savingImgbb, setSavingImgbb] = useState(false);
 
+    // AI 配置
+    const [aiConfig, setAiConfig] = useState<AIConfig>(DEFAULT_AI_CONFIG);
+    const [savingAi, setSavingAi] = useState(false);
+    const [activeAiTab, setActiveAiTab] = useState<'openai' | 'gemini' | 'deepseek' | 'doubao' | 'custom'>('openai');
+
     useEffect(() => {
         const loadStored = async () => {
             const data = await storage.get();
@@ -54,6 +89,11 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
             if (data.imgbbApiKey) {
                 setImgbbApiKey(data.imgbbApiKey);
             }
+            if (data.aiConfig) setAiConfig({
+                ...DEFAULT_AI_CONFIG,
+                ...data.aiConfig,
+                providers: { ...DEFAULT_AI_CONFIG.providers, ...data.aiConfig.providers }
+            });
         };
         loadStored();
     }, []);
@@ -97,12 +137,24 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
         setImgbbApiKey('');
     };
 
-    const handleImgbbApiKeyChange = (value: string) => {
-        setImgbbApiKey(value);
+    const handleImgbbChange = async (val: string) => {
+        setImgbbApiKey(val);
         setSavingImgbb(true);
-        storage.set({ imgbbApiKey: value }).then(() => {
-            setTimeout(() => setSavingImgbb(false), 500);
-        });
+        await storage.set({ imgbbApiKey: val.trim() });
+        setSavingImgbb(false);
+    };
+
+    const handleAiConfigChange = async (provider: string, field: string, value: string) => {
+        const newConfig = { ...aiConfig };
+        if (field === 'active') {
+            newConfig.activeProvider = provider as any;
+        } else {
+            (newConfig.providers as any)[provider][field] = value;
+        }
+        setAiConfig(newConfig);
+        setSavingAi(true);
+        await storage.set({ aiConfig: newConfig });
+        setSavingAi(false);
     };
 
     const handleShortcutChange = (key: keyof Shortcuts, value: string) => {
@@ -227,6 +279,88 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                 </div>
             )}
 
+            {/* AI Configuration Section */}
+            <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg">
+                        <Send size={16} />
+                    </div>
+                    <h4 className="text-sm font-bold text-gray-800">AI 助手配置</h4>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4 space-y-4">
+                    {/* Provider Selector Tabs */}
+                    <div className="flex bg-gray-200/50 p-1 rounded-lg">
+                        {(['openai', 'gemini', 'deepseek', 'doubao', 'custom'] as const).map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => setActiveAiTab(p)}
+                                className={`flex-1 py-1.5 text-[10px] font-bold rounded-md transition-all ${activeAiTab === p
+                                    ? 'bg-white text-teal-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                {p === 'openai' ? 'OpenAI' : p === 'gemini' ? 'Gemini' : p === 'deepseek' ? 'DeepSeek' : p === 'doubao' ? '豆包' : '自定义'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Current Provider Settings */}
+                    <div className="space-y-3 animate-in fade-in duration-300">
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">API Key</label>
+                            <input
+                                type="password"
+                                value={aiConfig.providers[activeAiTab].apiKey}
+                                onChange={(e) => handleAiConfigChange(activeAiTab, 'apiKey', e.target.value)}
+                                placeholder={`${activeAiTab} API Key`}
+                                className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all font-mono"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">模型名称</label>
+                                <input
+                                    type="text"
+                                    value={aiConfig.providers[activeAiTab].model}
+                                    onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
+                                    placeholder="如: gpt-4o"
+                                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div className="flex flex-col justify-end">
+                                <button
+                                    onClick={() => handleAiConfigChange(activeAiTab, 'active', '')}
+                                    disabled={aiConfig.activeProvider === activeAiTab}
+                                    className={`h-9 px-3 rounded-lg text-xs font-bold transition-all ${aiConfig.activeProvider === activeAiTab
+                                        ? 'bg-teal-600 text-white truncate'
+                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-teal-500 hover:text-teal-600'
+                                        }`}
+                                >
+                                    {aiConfig.activeProvider === activeAiTab ? '当前使用中' : '设为默认'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {(activeAiTab === 'custom' || aiConfig.providers[activeAiTab].baseUrl) && (
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">接口地址 (Base URL)</label>
+                                <input
+                                    type="text"
+                                    value={aiConfig.providers[activeAiTab].baseUrl || ''}
+                                    onChange={(e) => handleAiConfigChange(activeAiTab, 'baseUrl', e.target.value)}
+                                    placeholder="https://api.openai.com/v1"
+                                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all font-mono"
+                                />
+                            </div>
+                        )}
+
+                        {savingAi && <div className="text-[10px] text-teal-500 animate-pulse">正在保存 AI 配置...</div>}
+                    </div>
+                </div>
+            </div>
+
             {/* Shortcuts Section */}
             {status === 'connected' && (
                 <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -268,7 +402,7 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                         <input
                             type="password"
                             value={imgbbApiKey}
-                            onChange={(e) => handleImgbbApiKeyChange(e.target.value)}
+                            onChange={(e) => handleImgbbChange(e.target.value)}
                             placeholder="粘贴 imgbb API Key..."
                             className="w-full px-3 py-2 text-sm border rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                         />
