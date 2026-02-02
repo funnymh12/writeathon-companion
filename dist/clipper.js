@@ -2,46 +2,40 @@
   /**
    * Writeathon Clipper Logic
    * Includes simplified Readability and HTML-to-Markdown conversion
+   * Enhanced for AI conversation pages (Doubao, ChatGPT, Claude, etc.)
    */
 
   class Clipper {
     constructor() {
       this.doc = document;
       this.clone = null;
+
+      // AI 对话页面特征检测规则
+      this.aiConversationPatterns = [
+        { host: 'doubao.com', selector: '.conversation-content, .message-content, [class*="message"], [class*="chat"]' },
+        { host: 'chat.openai.com', selector: '[data-message-author-role], .markdown, .prose' },
+        { host: 'chatgpt.com', selector: '[data-message-author-role], .markdown, .prose' },
+        { host: 'claude.ai', selector: '[class*="Message"], [class*="message-content"]' },
+        { host: 'kimi.moonshot.cn', selector: '[class*="message"], [class*="chat"]' },
+        { host: 'tongyi.aliyun.com', selector: '[class*="message"], [class*="chat"]' },
+        { host: 'yiyan.baidu.com', selector: '[class*="message"], [class*="chat"]' },
+        { host: 'gemini.google.com', selector: '[class*="message"], .response-content' },
+        { host: 'poe.com', selector: '[class*="Message"], [class*="chat"]' },
+      ];
     }
 
     getArticle(options = {}) {
       this.options = { includeImages: true, ...options };
       try {
-        // Work on a clone to avoid modifying the actual page
-        this.clone = this.doc.body.cloneNode(true);
+        // 检测是否为 AI 对话页面
+        const isAIConversation = this._detectAIConversation();
 
-        // 1. Prepare
-        this._preProcess(this.clone);
+        if (isAIConversation) {
+          return this._extractAIConversation();
+        }
 
-        // 2. Identify Metadata
-        const metadata = this._getMetadata();
-
-        // 3. Find Main Content
-        let contentNode = this._findMainContent(this.clone);
-        if (!contentNode) contentNode = this.clone;
-
-        // 4. Post-Process Content
-        this._postProcess(contentNode);
-
-        // 5. Convert to Markdown
-        const markdown = this._toMarkdown(contentNode);
-
-        // 6. Stats
-        const stats = this._getStats(contentNode, markdown);
-
-        return {
-          title: metadata.title || this.doc.title,
-          url: this.doc.location.href,
-          content: markdown,
-          stats: stats,
-          excerpt: metadata.excerpt
-        };
+        // 普通页面提取逻辑
+        return this._extractNormalPage();
       } catch (err) {
         console.error('[Writeathon Clipper] Error:', err);
         return {
@@ -52,6 +46,234 @@
         };
       }
     }
+
+    // 检测是否为 AI 对话页面
+    _detectAIConversation() {
+      const hostname = window.location.hostname;
+
+      // 检查已知的 AI 对话网站
+      for (const pattern of this.aiConversationPatterns) {
+        if (hostname.includes(pattern.host)) {
+          return pattern;
+        }
+      }
+
+      // 通用检测：查找对话式布局特征
+      const conversationIndicators = [
+        '[class*="conversation"]',
+        '[class*="chat-message"]',
+        '[class*="message-list"]',
+        '[data-role="user"]',
+        '[data-role="assistant"]',
+        '[class*="user-message"]',
+        '[class*="assistant-message"]',
+        '[class*="ai-response"]'
+      ];
+
+      for (const selector of conversationIndicators) {
+        if (document.querySelector(selector)) {
+          return { host: 'generic', selector: selector };
+        }
+      }
+
+      return null;
+    }
+
+    // 提取 AI 对话内容
+    _extractAIConversation() {
+      console.log('[Writeathon Clipper] Detected AI conversation page');
+
+      const metadata = this._getMetadata();
+      let markdown = '';
+
+      // 查找所有消息元素
+      const messageSelectors = [
+        // 通用选择器
+        '[class*="message"]:not([class*="message-input"]):not([class*="message-box"])',
+        '[class*="Message"]:not([class*="Input"])',
+        '[data-message-author-role]',
+        '.prose',
+        '.markdown',
+        // 豆包特定
+        '[class*="chat-message"]',
+        '[class*="conversation-turn"]'
+      ];
+
+      let messages = [];
+      for (const selector of messageSelectors) {
+        const found = document.querySelectorAll(selector);
+        if (found.length > 0) {
+          messages = Array.from(found);
+          break;
+        }
+      }
+
+      if (messages.length === 0) {
+        // 回退到普通提取
+        console.log('[Writeathon Clipper] No conversation messages found, falling back to normal extraction');
+        return this._extractNormalPage();
+      }
+
+      // 处理每条消息
+      messages.forEach((msg, index) => {
+        // 跳过输入框相关元素
+        if (this._isInputElement(msg)) return;
+
+        // 克隆并清理消息
+        const clonedMsg = msg.cloneNode(true);
+        this._cleanConversationMessage(clonedMsg);
+
+        // 判断角色
+        const role = this._detectMessageRole(msg);
+        const roleLabel = role === 'user' ? '👤 **用户**' : '🤖 **AI**';
+
+        // 转换为 Markdown
+        const content = this._toMarkdown(clonedMsg).trim();
+        if (content.length > 0) {
+          markdown += `\n${roleLabel}\n\n${content}\n\n---\n`;
+        }
+      });
+
+      const stats = {
+        words: markdown.replace(/\s+/g, '').length,
+        images: (markdown.match(/!\[/g) || []).length,
+        links: (markdown.match(/\]\(/g) || []).length
+      };
+
+      return {
+        title: metadata.title || document.title,
+        url: document.location.href,
+        content: markdown.trim(),
+        stats: stats,
+        excerpt: metadata.excerpt
+      };
+    }
+
+    // 检测是否为输入相关元素
+    _isInputElement(el) {
+      const className = el.className?.toString().toLowerCase() || '';
+      const inputPatterns = ['input', 'textarea', 'editor', 'send', 'submit', 'toolbar', 'footer'];
+      return inputPatterns.some(p => className.includes(p)) ||
+        el.querySelector('textarea, input[type="text"]') !== null;
+    }
+
+    // 检测消息角色
+    _detectMessageRole(el) {
+      const className = el.className?.toString().toLowerCase() || '';
+      const dataRole = el.getAttribute('data-message-author-role') ||
+        el.getAttribute('data-role') || '';
+
+      if (dataRole === 'user' || className.includes('user') || className.includes('human')) {
+        return 'user';
+      }
+      return 'assistant';
+    }
+
+    // 清理对话消息中的杂项
+    _cleanConversationMessage(node) {
+      // 移除按钮、工具栏等
+      const junkSelectors = [
+        'button',
+        '[class*="button"]',
+        '[class*="toolbar"]',
+        '[class*="action"]',
+        '[class*="share"]',
+        '[class*="copy"]',
+        '[class*="like"]',
+        '[class*="dislike"]',
+        '[class*="feedback"]',
+        '[class*="vote"]',
+        '[class*="tool"]',
+        '[class*="menu"]',
+        '[class*="dropdown"]',
+        '[class*="modal"]',
+        '[class*="popup"]',
+        '[class*="tooltip"]',
+        '[class*="avatar"]',
+        '[class*="icon"]:not(img)',
+        '[class*="reference"]',
+        '[class*="source"]',
+        '[class*="citation"]',
+        'svg',
+        '[role="button"]',
+        '[aria-label*="复制"]',
+        '[aria-label*="分享"]',
+        '[aria-label*="点赞"]',
+        '[title*="复制"]',
+        '[title*="分享"]'
+      ];
+
+      junkSelectors.forEach(selector => {
+        try {
+          node.querySelectorAll(selector).forEach(el => el.remove());
+        } catch (e) { }
+      });
+
+      // 移除包含特定文字的短元素
+      this._removeJunkTextElements(node);
+    }
+
+    // 移除包含杂项文字的元素
+    _removeJunkTextElements(node) {
+      const junkTexts = [
+        '分享', '复制', '点赞', '踩', '收藏', '举报', '反馈',
+        '参考.*篇资料', '深度思考', '技能', '发消息', '选择技能',
+        '复制代码', 'Copy', 'Share', 'Like', 'Dislike',
+        '重新生成', '继续', '停止', 'Stop', 'Regenerate',
+        '编辑', 'Edit', '删除', 'Delete'
+      ];
+
+      const pattern = new RegExp(`^(${junkTexts.join('|')})$`, 'i');
+
+      const walk = (el) => {
+        if (el.nodeType !== Node.ELEMENT_NODE) return;
+
+        const text = el.textContent?.trim() || '';
+        // 只对短文本元素应用规则
+        if (text.length < 30 && pattern.test(text)) {
+          el.remove();
+          return;
+        }
+
+        Array.from(el.children).forEach(walk);
+      };
+
+      Array.from(node.children).forEach(walk);
+    }
+
+    // 普通页面提取
+    _extractNormalPage() {
+      // Work on a clone to avoid modifying the actual page
+      this.clone = this.doc.body.cloneNode(true);
+
+      // 1. Prepare
+      this._preProcess(this.clone);
+
+      // 2. Identify Metadata
+      const metadata = this._getMetadata();
+
+      // 3. Find Main Content
+      let contentNode = this._findMainContent(this.clone);
+      if (!contentNode) contentNode = this.clone;
+
+      // 4. Post-Process Content
+      this._postProcess(contentNode);
+
+      // 5. Convert to Markdown
+      const markdown = this._toMarkdown(contentNode);
+
+      // 6. Stats
+      const stats = this._getStats(contentNode, markdown);
+
+      return {
+        title: metadata.title || this.doc.title,
+        url: this.doc.location.href,
+        content: markdown,
+        stats: stats,
+        excerpt: metadata.excerpt
+      };
+    }
+
 
     _getMetadata() {
       const title =
@@ -130,12 +352,24 @@
       const stripClasses = [
         'share', 'comment', 'related', 'ads', 'promo', 'login', 'signup', 'newsletter', 'toc', 'sidebar',
         'copyright', 'author-info', 'recommend', 'social', 'tool', 'qrcode', 'meta', 'footer', 'header',
-        'nav', 'menu', 'breadcrumbs', 'subscribe'
+        'nav', 'menu', 'breadcrumbs', 'subscribe',
+        // AI 对话界面相关
+        'action', 'toolbar', 'button', 'icon', 'avatar', 'feedback', 'vote', 'like', 'dislike',
+        'copy-button', 'share-button', 'reference', 'citation', 'source-list', 'tooltip'
       ];
 
       const junkTextPatterns = [
+        // 常见网页 UI
         /回到顶部/, /扫码下载/, /原链接/, /免责声明/, /版权所有/, /阅读原文/,
-        /相关推荐/, /热门文章/, /关注我们/, /下载APP/, /广告/, /推广/
+        /相关推荐/, /热门文章/, /关注我们/, /下载APP/, /广告/, /推广/,
+        // AI 对话界面 UI
+        /^分享$/, /^复制$/, /^点赞$/, /^踩$/, /^收藏$/, /^举报$/, /^反馈$/,
+        /^深度思考$/, /^技能$/, /^发消息$/, /^选择技能$/,
+        /参考\s*\d+\s*篇资料/, /参考资料/, /引用来源/,
+        /^复制代码$/, /^Copy$/, /^Share$/, /^Like$/, /^Dislike$/,
+        /^重新生成$/, /^继续$/, /^停止$/, /^Stop$/, /^Regenerate$/,
+        /^编辑$/, /^Edit$/, /^删除$/, /^Delete$/,
+        /这是啥意思/, /查看更多/, /展开全部/, /收起/
       ];
 
       // Remove elements with these classes/ids
