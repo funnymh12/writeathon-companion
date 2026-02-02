@@ -58,20 +58,60 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
+                let allCards: Card[] = [];
 
-
-                // Always fetch recent cards. If selectedSpace is provided, it filters by space.
-                // Otherwise it returns the global recent list (usually 50 items).
-                const response = await client.getRecentCards(false, selectedSpace || undefined);
-
-                if (response.success && response.data) {
-                    setCards(response.data);
-                    setFilteredCards(response.data);
+                if (selectedSpace) {
+                    // Fetch for specific space
+                    const response = await client.getRecentCards(false, selectedSpace);
+                    if (response.success && response.data) {
+                        allCards = response.data;
+                    }
                 } else {
-                    // Handle case where data might be null or empty
-                    setCards([]);
-                    setFilteredCards([]);
+                    // Strategy for "All Spaces":
+                    // 1. Fetch available spaces
+                    const spacesRes = await client.getSpaces();
+                    const spacesList = (spacesRes.success && spacesRes.data) ? spacesRes.data : [];
+
+                    // 2. Build requests: one for "Default" (no ID) and one for each specific space
+                    // We catch individual errors so one failure doesn't break everything
+                    const promises = [
+                        client.getRecentCards(false).catch(() => ({ success: false, data: [] } as any)),
+                        ...spacesList.map(s =>
+                            client.getRecentCards(false, s.id || s._id).catch(() => ({ success: false, data: [] } as any))
+                        )
+                    ];
+
+                    const results = await Promise.all(promises);
+
+                    // 3. Aggregate results
+                    results.forEach(res => {
+                        if (res.success && Array.isArray(res.data)) {
+                            allCards.push(...res.data);
+                        }
+                    });
                 }
+
+                // 4. Deduplicate cards by ID
+                const uniqueMap = new Map();
+                allCards.forEach(card => {
+                    const id = card._id || card.id;
+                    if (id && !uniqueMap.has(id)) {
+                        uniqueMap.set(id, card);
+                    }
+                });
+                const uniqueCards = Array.from(uniqueMap.values());
+
+                // 5. Sort by time (newest first) and take top 50
+                uniqueCards.sort((a, b) => {
+                    const tA = new Date(a.updated || a.created || 0).getTime();
+                    const tB = new Date(b.updated || b.created || 0).getTime();
+                    return tB - tA;
+                });
+
+                const finalCards = uniqueCards.slice(0, 50);
+
+                setCards(finalCards);
+                setFilteredCards(finalCards);
             }
         } catch (err) {
             console.error('获取最近卡片失败', err);

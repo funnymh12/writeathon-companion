@@ -88,9 +88,14 @@ export class WriteathonClient {
     }
 
     async getRecentCards(excludeDateTitle: boolean = false, spaceId?: string): Promise<WriteathonResponse<Card[]>> {
-        let query = excludeDateTitle ? '?exclude_date_title=true' : '';
+        let query = excludeDateTitle ? '?exclude_date_title=true' : '?';
+        if (!query.endsWith('?')) query += '&';
+
+        // Add limit=50 to ensure we get up to 50 cards
+        query += 'limit=50';
+
         if (spaceId) {
-            query += (query ? '&' : '?') + `space=${spaceId}`;
+            query += `&space=${spaceId}`;
         }
         return this.request<Card[]>(`/v1/users/:id/cards/recent${query}`);
     }
