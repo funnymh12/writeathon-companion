@@ -4,14 +4,25 @@ import { WriteathonClient } from '../utils/api';
 import { Loader2, CheckCircle, XCircle, ArrowLeft, Keyboard, Send, Sparkles } from 'lucide-react';
 
 interface Shortcuts {
-    toggleMemo: string;
-    toggleRecent: string;
-    toggleClip: string;
-    togglePrompt: string;
-    toggleChat: string;
     quickSend: string;
     globalClip: string;
 }
+
+interface EnabledModules {
+    memo: boolean;
+    recent: boolean;
+    clip: boolean;
+    prompt: boolean;
+    chat: boolean;
+}
+
+const DEFAULT_ENABLED_MODULES: EnabledModules = {
+    memo: true,
+    recent: true,
+    clip: true,
+    prompt: true,
+    chat: true
+};
 
 interface AIProviderConfig {
     apiKey: string;
@@ -33,20 +44,22 @@ interface AIConfig {
 const DEFAULT_AI_CONFIG: AIConfig = {
     activeProvider: 'openai',
     providers: {
-        openai: { apiKey: '', model: 'gpt-4o' },
+        openai: { apiKey: '', model: 'gpt-4o-mini' },
         gemini: { apiKey: '', model: 'gemini-1.5-flash' },
         deepseek: { apiKey: '', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
-        doubao: { apiKey: '', model: 'ep-xxx', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
+        doubao: { apiKey: '', model: '', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
         custom: { apiKey: '', model: '', baseUrl: '' }
     }
 };
 
+const PRESETS = {
+    openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    gemini: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
+    deepseek: ['deepseek-chat', 'deepseek-coder'],
+    doubao: ['ep-2024...', 'ep-2025...']
+};
+
 const DEFAULT_SHORTCUTS: Shortcuts = {
-    toggleMemo: 'Alt+1',
-    toggleRecent: 'Alt+2',
-    toggleClip: 'Alt+3',
-    togglePrompt: 'Alt+4',
-    toggleChat: 'Alt+5',
     quickSend: 'Ctrl+Enter',
     globalClip: 'Alt+S'
 };
@@ -65,6 +78,8 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
     const [username, setUsername] = useState('');
     const [shortcuts, setShortcuts] = useState<Shortcuts>(DEFAULT_SHORTCUTS);
     const [savingShortcuts, setSavingShortcuts] = useState(false);
+    const [enabledModules, setEnabledModules] = useState<EnabledModules>(DEFAULT_ENABLED_MODULES);
+    const [savingModules, setSavingModules] = useState(false);
     const [imgbbApiKey, setImgbbApiKey] = useState('');
     const [savingImgbb, setSavingImgbb] = useState(false);
 
@@ -85,6 +100,9 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
             }
             if (data.shortcuts) {
                 setShortcuts({ ...DEFAULT_SHORTCUTS, ...data.shortcuts });
+            }
+            if (data.enabledModules) {
+                setEnabledModules({ ...DEFAULT_ENABLED_MODULES, ...data.enabledModules });
             }
             if (data.imgbbApiKey) {
                 setImgbbApiKey(data.imgbbApiKey);
@@ -160,10 +178,18 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
     const handleShortcutChange = (key: keyof Shortcuts, value: string) => {
         const newShortcuts = { ...shortcuts, [key]: value };
         setShortcuts(newShortcuts);
-        // Auto save
         setSavingShortcuts(true);
         storage.set({ shortcuts: newShortcuts }).then(() => {
             setTimeout(() => setSavingShortcuts(false), 500);
+        });
+    };
+
+    const handleModuleToggle = (key: keyof EnabledModules) => {
+        const newModules = { ...enabledModules, [key]: !enabledModules[key] };
+        setEnabledModules(newModules);
+        setSavingModules(true);
+        storage.set({ enabledModules: newModules }).then(() => {
+            setTimeout(() => setSavingModules(false), 500);
         });
     };
 
@@ -319,15 +345,38 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
+                            <div className="relative">
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">模型名称</label>
-                                <input
-                                    type="text"
-                                    value={aiConfig.providers[activeAiTab].model}
-                                    onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
-                                    placeholder="如: gpt-4o"
-                                    className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all"
-                                />
+                                {activeAiTab !== 'custom' && activeAiTab !== 'doubao' ? (
+                                    <select
+                                        value={aiConfig.providers[activeAiTab].model}
+                                        onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
+                                        className="w-full h-9 px-2 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all appearance-none cursor-pointer"
+                                    >
+                                        {(PRESETS as any)[activeAiTab].map((m: string) => (
+                                            <option key={m} value={m}>{m}</option>
+                                        ))}
+                                        <option value="custom">✍️ 手动输入...</option>
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={aiConfig.providers[activeAiTab].model}
+                                        onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
+                                        placeholder={activeAiTab === 'doubao' ? 'Endpoint ID (ep-xxx)' : '如: gpt-4o'}
+                                        className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all"
+                                    />
+                                )}
+                                {/* 如果在下拉模式中选择了自定义，则显示输入框 */}
+                                {activeAiTab !== 'custom' && activeAiTab !== 'doubao' && aiConfig.providers[activeAiTab].model === 'custom' && (
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        placeholder="输入模型名称..."
+                                        onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
+                                        className="absolute inset-0 mt-5 w-full h-9 px-3 rounded-lg border border-teal-500 bg-white text-xs z-10"
+                                    />
+                                )}
                             </div>
                             <div className="flex flex-col justify-end">
                                 <button
@@ -361,29 +410,55 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                 </div>
             </div>
 
+            {/* Section Management */}
+            {status === 'connected' && (
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg">
+                            <Sparkles size={16} />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800">模块显示管理</h3>
+                        {savingModules && <span className="text-[10px] text-teal-600 animate-pulse">已保存</span>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 bg-gray-50 rounded-xl p-3">
+                        {(Object.keys(DEFAULT_ENABLED_MODULES) as Array<keyof EnabledModules>).map((key) => (
+                            <button
+                                key={key}
+                                onClick={() => handleModuleToggle(key)}
+                                className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${enabledModules[key]
+                                        ? 'bg-white border-teal-200 text-teal-700 shadow-sm'
+                                        : 'bg-gray-100/50 border-gray-200 text-gray-400 opacity-60'
+                                    }`}
+                            >
+                                <span className="text-[10px] font-bold uppercase tracking-wider">
+                                    {key === 'memo' ? '速记' : key === 'recent' ? '最近' : key === 'clip' ? '剪藏' : key === 'prompt' ? 'Prompt' : 'AI Chat'}
+                                </span>
+                                <div className={`w-6 h-3.5 rounded-full relative transition-colors ${enabledModules[key] ? 'bg-teal-500' : 'bg-gray-300'}`}>
+                                    <div className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-all ${enabledModules[key] ? 'left-3' : 'left-0.5'}`} />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-[10px] text-gray-400 px-1">关闭不常用的板块可以使侧边栏更加清爽。</p>
+                </div>
+            )}
+
             {/* Shortcuts Section */}
             {status === 'connected' && (
                 <div className="space-y-4 pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-2">
-                        <Keyboard className="h-4 w-4 text-gray-500" />
-                        <h3 className="text-sm font-medium text-gray-900">快捷键设置</h3>
-                        {savingShortcuts && <span className="text-[10px] text-green-600 animate-pulse">已保存</span>}
+                        <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg">
+                            <Keyboard size={16} />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800">快捷键设置</h3>
+                        {savingShortcuts && <span className="text-[10px] text-teal-600 animate-pulse">已保存</span>}
                     </div>
-
-                    <div className="space-y-1 bg-white rounded-lg border border-gray-100 p-3">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">插件内导航</div>
-                        <ShortcutInput label="切换到速记" value={shortcuts.toggleMemo} shortcutKey="toggleMemo" />
-                        <ShortcutInput label="切换到最近" value={shortcuts.toggleRecent} shortcutKey="toggleRecent" />
-                        <ShortcutInput label="切换到剪藏" value={shortcuts.toggleClip} shortcutKey="toggleClip" />
-                        <ShortcutInput label="切换到Prompt" value={shortcuts.togglePrompt} shortcutKey="togglePrompt" />
-
-                        <div className="h-px bg-gray-50 my-2"></div>
-
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">操作</div>
+                    <div className="space-y-1 bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">操作</div>
                         <ShortcutInput label="发送/保存 (速记/剪藏)" value={shortcuts.quickSend} shortcutKey="quickSend" />
                         <ShortcutInput label="全局选取剪藏 (网页中)" value={shortcuts.globalClip} shortcutKey="globalClip" />
                     </div>
-                    <p className="text-[10px] text-gray-400">
+                    <p className="text-[10px] text-gray-400 px-1">
                         * 全局快捷键在任何网页都可触发（需刷新网页生效）
                     </p>
                 </div>

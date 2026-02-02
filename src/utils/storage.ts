@@ -10,13 +10,15 @@ export interface AppStorage {
     pinnedPrompts?: string[];
     recentUsedPrompts?: { id: string; timestamp: number }[];
     shortcuts?: {
-        toggleMemo: string;
-        toggleRecent: string;
-        toggleClip: string;
-        togglePrompt: string;
-        toggleChat: string; // 新增 AI Chat 快捷键
         quickSend: string;
         globalClip: string;
+    };
+    enabledModules?: {
+        memo: boolean;
+        recent: boolean;
+        clip: boolean;
+        prompt: boolean;
+        chat: boolean;
     };
     // AI Chat 相关配置
     aiConfig?: {
@@ -38,7 +40,7 @@ export const storage = {
             chrome.storage.local.get([
                 'token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName',
                 'imgbbApiKey', 'shortcuts', 'promptSpaceId', 'pinnedPrompts', 'recentUsedPrompts',
-                'aiConfig', 'chatHistory'
+                'aiConfig', 'chatHistory', 'enabledModules'
             ], (result) => {
                 resolve(result);
             });

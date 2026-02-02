@@ -14,6 +14,7 @@ function App() {
     const [isAuth, setIsAuth] = useState<boolean | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('memo');
     const [previousTab, setPreviousTab] = useState<Tab>('memo');
+    const [enabledModules, setEnabledModules] = useState<any>({ memo: true, recent: true, clip: true, prompt: true, chat: true });
 
     useEffect(() => {
         checkAuth();
@@ -24,13 +25,8 @@ function App() {
 
             const data = await storage.get();
             const shortcuts = data.shortcuts || {
-                toggleMemo: 'Alt+1',
-                toggleRecent: 'Alt+2',
-                toggleClip: 'Alt+3',
-                togglePrompt: 'Alt+4',
-                toggleChat: 'Alt+5',
                 quickSend: 'Ctrl+Enter',
-                globalClip: 'Alt+Shift+S'
+                globalClip: 'Alt+S'
             };
 
             const getKeyString = (ev: KeyboardEvent) => {
@@ -52,16 +48,10 @@ function App() {
             const pressed = getKeyString(e);
             if (!pressed) return;
 
-            if (pressed === shortcuts.toggleMemo) {
-                setActiveTab('memo');
-            } else if (pressed === shortcuts.toggleRecent) {
-                setActiveTab('recent');
-            } else if (pressed === shortcuts.toggleClip) {
-                setActiveTab('clip');
-            } else if (pressed === shortcuts.togglePrompt) {
-                setActiveTab('prompt');
-            } else if (pressed === shortcuts.toggleChat) {
-                setActiveTab('chat');
+            // Only handle action shortcuts now
+            if (pressed === shortcuts.quickSend) {
+                // Trigger send logic if applicable (this is usually handled within the component itself, 
+                // but we keep the listener for global context if needed)
             }
         };
 
@@ -71,9 +61,17 @@ function App() {
 
     const checkAuth = async () => {
         const data = await storage.get();
+        if (data.enabledModules) setEnabledModules(data.enabledModules);
+
         if (data.token && data.userId) {
             setIsAuth(true);
-            setActiveTab('memo');
+            // Default to first enabled module
+            const mods = data.enabledModules || { memo: true, recent: true, clip: true, prompt: true, chat: true };
+            if (mods.memo) setActiveTab('memo');
+            else if (mods.recent) setActiveTab('recent');
+            else if (mods.clip) setActiveTab('clip');
+            else if (mods.prompt) setActiveTab('prompt');
+            else if (mods.chat) setActiveTab('chat');
         } else {
             setIsAuth(false);
             setActiveTab('settings');
@@ -146,45 +144,55 @@ function App() {
 
             {isAuth && (activeTab !== 'settings') && (
                 <nav className="flex h-16 border-t bg-white items-center justify-around px-1 shrink-0">
-                    <button
-                        onClick={() => setActiveTab('memo')}
-                        className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'memo' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <Notebook size={20} className={activeTab === 'memo' ? 'scale-110' : ''} />
-                        <span className="text-[10px] font-bold">速记</span>
-                    </button>
+                    {enabledModules.memo && (
+                        <button
+                            onClick={() => setActiveTab('memo')}
+                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'memo' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <Notebook size={20} className={activeTab === 'memo' ? 'scale-110' : ''} />
+                            <span className="text-[10px] font-bold">速记</span>
+                        </button>
+                    )}
 
-                    <button
-                        onClick={() => setActiveTab('recent')}
-                        className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'recent' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <History size={20} className={activeTab === 'recent' ? 'scale-110' : ''} />
-                        <span className="text-[10px] font-bold">最近</span>
-                    </button>
+                    {enabledModules.recent && (
+                        <button
+                            onClick={() => setActiveTab('recent')}
+                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'recent' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <History size={20} className={activeTab === 'recent' ? 'scale-110' : ''} />
+                            <span className="text-[10px] font-bold">最近</span>
+                        </button>
+                    )}
 
-                    <button
-                        onClick={() => setActiveTab('clip')}
-                        className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'clip' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <Scissors size={20} className={activeTab === 'clip' ? 'scale-110' : ''} />
-                        <span className="text-[10px] font-bold">剪藏</span>
-                    </button>
+                    {enabledModules.clip && (
+                        <button
+                            onClick={() => setActiveTab('clip')}
+                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'clip' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <Scissors size={20} className={activeTab === 'clip' ? 'scale-110' : ''} />
+                            <span className="text-[10px] font-bold">剪藏</span>
+                        </button>
+                    )}
 
-                    <button
-                        onClick={() => setActiveTab('prompt')}
-                        className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'prompt' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <Sparkles size={20} className={activeTab === 'prompt' ? 'scale-110' : ''} />
-                        <span className="text-[10px] font-bold">Prompt</span>
-                    </button>
+                    {enabledModules.prompt && (
+                        <button
+                            onClick={() => setActiveTab('prompt')}
+                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'prompt' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <Sparkles size={20} className={activeTab === 'prompt' ? 'scale-110' : ''} />
+                            <span className="text-[10px] font-bold">Prompt</span>
+                        </button>
+                    )}
 
-                    <button
-                        onClick={() => setActiveTab('chat')}
-                        className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'chat' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <MessageSquare size={20} className={activeTab === 'chat' ? 'scale-110' : ''} />
-                        <span className="text-[10px] font-bold">AI Chat</span>
-                    </button>
+                    {enabledModules.chat && (
+                        <button
+                            onClick={() => setActiveTab('chat')}
+                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'chat' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <MessageSquare size={20} className={activeTab === 'chat' ? 'scale-110' : ''} />
+                            <span className="text-[10px] font-bold">AI Chat</span>
+                        </button>
+                    )}
                 </nav>
             )}
         </div>
