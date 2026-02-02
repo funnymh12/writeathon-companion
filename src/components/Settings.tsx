@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { WriteathonClient } from '../utils/api';
-import { Loader2, CheckCircle, XCircle, ArrowLeft, Keyboard, Send, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ArrowLeft, Keyboard, Send, Sparkles, X } from 'lucide-react';
 
 interface Shortcuts {
     quickSend: string;
@@ -45,7 +45,7 @@ const DEFAULT_AI_CONFIG: AIConfig = {
     activeProvider: 'openai',
     providers: {
         openai: { apiKey: '', model: 'gpt-4o-mini' },
-        gemini: { apiKey: '', model: 'gemini-1.5-flash' },
+        gemini: { apiKey: '', model: 'gemini-2.0-flash' },
         deepseek: { apiKey: '', model: 'deepseek-chat', baseUrl: 'https://api.deepseek.com' },
         doubao: { apiKey: '', model: '', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
         custom: { apiKey: '', model: '', baseUrl: '' }
@@ -53,10 +53,10 @@ const DEFAULT_AI_CONFIG: AIConfig = {
 };
 
 const PRESETS = {
-    openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-    gemini: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
-    deepseek: ['deepseek-chat', 'deepseek-coder'],
-    doubao: ['ep-2024...', 'ep-2025...']
+    openai: ['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o1-mini', 'gpt-5-preview'],
+    gemini: ['gemini-2.0-pro-exp', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-exp-1206'],
+    deepseek: ['deepseek-chat', 'deepseek-v3', 'deepseek-r1'],
+    doubao: ['ep-2025...', 'ep-2024...']
 };
 
 const DEFAULT_SHORTCUTS: Shortcuts = {
@@ -348,16 +348,50 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                             <div className="relative">
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">模型名称</label>
                                 {activeAiTab !== 'custom' && activeAiTab !== 'doubao' ? (
-                                    <select
-                                        value={aiConfig.providers[activeAiTab].model}
-                                        onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
-                                        className="w-full h-9 px-2 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all appearance-none cursor-pointer"
-                                    >
-                                        {(PRESETS as any)[activeAiTab].map((m: string) => (
-                                            <option key={m} value={m}>{m}</option>
-                                        ))}
-                                        <option value="custom">✍️ 手动输入...</option>
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={PRESETS[activeAiTab as keyof typeof PRESETS].includes(aiConfig.providers[activeAiTab].model) ? aiConfig.providers[activeAiTab].model : 'custom'}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val !== 'custom') {
+                                                    handleAiConfigChange(activeAiTab, 'model', val);
+                                                } else {
+                                                    // 选自定义且当前值已经在预设里时，才清空让用户输入。
+                                                    // 如果当前值不在预设里，说明已经在自定义输入状态了，保持不动。
+                                                    if (PRESETS[activeAiTab as keyof typeof PRESETS].includes(aiConfig.providers[activeAiTab].model)) {
+                                                        handleAiConfigChange(activeAiTab, 'model', '');
+                                                    }
+                                                }
+                                            }}
+                                            className="w-full h-9 px-2 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all appearance-none cursor-pointer"
+                                        >
+                                            {(PRESETS as any)[activeAiTab].map((m: string) => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                            <option value="custom">✍️ 自定义输入内容...</option>
+                                        </select>
+
+                                        {/* 如果当前模型不在预设列表中，或者显式处于自定义状态，则覆盖显示输入框 */}
+                                        {(!PRESETS[activeAiTab as keyof typeof PRESETS].includes(aiConfig.providers[activeAiTab].model)) && (
+                                            <div className="absolute inset-0 z-10">
+                                                <input
+                                                    type="text"
+                                                    autoFocus
+                                                    value={aiConfig.providers[activeAiTab].model}
+                                                    placeholder="输入模型名称..."
+                                                    onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
+                                                    className="w-full h-9 px-3 pr-8 rounded-lg border border-teal-500 bg-white text-xs focus:ring-1 focus:ring-teal-500 outline-none"
+                                                />
+                                                <button
+                                                    onClick={() => handleAiConfigChange(activeAiTab, 'model', PRESETS[activeAiTab as keyof typeof PRESETS][0])}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 p-1"
+                                                    title="返回预设列表"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <input
                                         type="text"
@@ -365,16 +399,6 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                                         onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
                                         placeholder={activeAiTab === 'doubao' ? 'Endpoint ID (ep-xxx)' : '如: gpt-4o'}
                                         className="w-full h-9 px-3 rounded-lg border border-gray-200 bg-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-all"
-                                    />
-                                )}
-                                {/* 如果在下拉模式中选择了自定义，则显示输入框 */}
-                                {activeAiTab !== 'custom' && activeAiTab !== 'doubao' && aiConfig.providers[activeAiTab].model === 'custom' && (
-                                    <input
-                                        type="text"
-                                        autoFocus
-                                        placeholder="输入模型名称..."
-                                        onChange={(e) => handleAiConfigChange(activeAiTab, 'model', e.target.value)}
-                                        className="absolute inset-0 mt-5 w-full h-9 px-3 rounded-lg border border-teal-500 bg-white text-xs z-10"
                                     />
                                 )}
                             </div>
@@ -426,8 +450,8 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                                 key={key}
                                 onClick={() => handleModuleToggle(key)}
                                 className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${enabledModules[key]
-                                        ? 'bg-white border-teal-200 text-teal-700 shadow-sm'
-                                        : 'bg-gray-100/50 border-gray-200 text-gray-400 opacity-60'
+                                    ? 'bg-white border-teal-200 text-teal-700 shadow-sm'
+                                    : 'bg-gray-100/50 border-gray-200 text-gray-400 opacity-60'
                                     }`}
                             >
                                 <span className="text-[10px] font-bold uppercase tracking-wider">

@@ -58,11 +58,23 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
-                // Use selectedSpace if available
-                const response = await client.getRecentCards(false, selectedSpace || undefined);
-                if (response.success && response.data) {
-                    setCards(response.data);
-                    setFilteredCards(response.data);
+
+                // 如果没有选择特定空间，利用“获取空间列表”接口能返回50张卡片的能力
+                if (!selectedSpace) {
+                    const response = await client.getSpaces();
+                    if (response.success && response.data) {
+                        // 根据文档备注，这个接口返回的是最近修改的50个卡片列表
+                        // 我们将其作为 cards 数据源
+                        setCards(response.data as any);
+                        setFilteredCards(response.data as any);
+                    }
+                } else {
+                    // 如果选择了特定空间，依然使用原有的获取该空间最近卡片的接口
+                    const response = await client.getRecentCards(false, selectedSpace);
+                    if (response.success && response.data) {
+                        setCards(response.data);
+                        setFilteredCards(response.data);
+                    }
                 }
             }
         } catch (err) {
