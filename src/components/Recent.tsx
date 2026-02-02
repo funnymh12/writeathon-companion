@@ -398,8 +398,8 @@ const Recent: React.FC = () => {
                     <button
                         onClick={() => handleTabChange('recent')}
                         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'recent'
-                            ? 'bg-black text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                             }`}
                     >
                         最近卡片
@@ -407,8 +407,8 @@ const Recent: React.FC = () => {
                     <button
                         onClick={() => handleTabChange('pick')}
                         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'pick'
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
-                            : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
                             }`}
                     >
                         <Sparkles className="h-4 w-4" />
@@ -453,7 +453,7 @@ const Recent: React.FC = () => {
                     <button
                         onClick={fetchPickedCards}
                         disabled={loading}
-                        className="w-full py-2 px-4 bg-amber-50 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 px-4 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
                     >
                         {loading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -493,7 +493,7 @@ const Recent: React.FC = () => {
                                             {card.title || '无标题'}
                                         </h3>
                                     </div>
-                                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-black transition-colors shrink-0" />
+                                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors shrink-0" />
                                 </button>
                             ))}
                         </div>
@@ -502,11 +502,11 @@ const Recent: React.FC = () => {
                     // Picked Cards
                     loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                         </div>
                     ) : pickedCards.length === 0 ? (
                         <div className="p-8 text-center text-muted-foreground text-sm">
-                            <Sparkles className="h-8 w-8 mx-auto mb-3 text-amber-300" />
+                            <Sparkles className="h-8 w-8 mx-auto mb-3 text-blue-300" />
                             <p>点击「换一批」获取随机卡片</p>
                         </div>
                     ) : (
@@ -515,7 +515,7 @@ const Recent: React.FC = () => {
                                 <button
                                     key={card._id || card.id || index}
                                     onClick={() => handleCardClick(card)}
-                                    className="w-full text-left p-4 bg-white rounded-lg border border-gray-100 hover:border-amber-200 hover:shadow-sm transition-all group"
+                                    className="w-full text-left p-4 bg-white rounded-lg border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
@@ -526,7 +526,7 @@ const Recent: React.FC = () => {
                                                 {card.content?.substring(0, 150)}...
                                             </p>
                                         </div>
-                                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-amber-500 transition-colors shrink-0 mt-1" />
+                                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors shrink-0 mt-1" />
                                     </div>
                                 </button>
                             ))}

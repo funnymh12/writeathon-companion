@@ -303,7 +303,7 @@ const Memo: React.FC = () => {
                     disabled={sending || (!content.trim() && !quote.trim())}
                     className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${status === 'success'
                         ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-black hover:bg-gray-800 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     {sending ? (
