@@ -80,16 +80,42 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             const imageUrl = info.srcUrl;
             if (!imageUrl) return;
 
+            let finalImageUrl = imageUrl;
+
+            // 获取 imgbb API Key 用于处理防盗链图片
+            const { imgbbApiKey } = await chrome.storage.local.get(['imgbbApiKey']);
+
+            try {
+                // 执行防盗链检测：尝试在背景脚本中获取图片
+                // 如果是 anti-leech 图片，直接链接可能在写拉松中无法显示
+                // 我们通过 fetch 检查是否能获取到
+                const isAccessible = await checkUrlAccessible(imageUrl);
+
+                if (!isAccessible && imgbbApiKey) {
+                    console.log('[写拉松] 检测到防盗链图片，尝试上传至图床:', imageUrl);
+                    const base64 = await fetchImageAsBase64(imageUrl);
+                    if (base64) {
+                        const uploadedUrl = await uploadToImgbb(base64, imgbbApiKey);
+                        if (uploadedUrl) {
+                            finalImageUrl = uploadedUrl;
+                            console.log('[写拉松] 图片已成功中转至图床:', finalImageUrl);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[写拉松] 图片防盗链检测或上传过程中出错:', e);
+            }
+
             await sendToWriteathon({
                 token,
                 userId,
                 spaceId: selectedSpaceId,
                 title: pageTitle,
-                content: `![图片](${imageUrl})`,
+                content: `![图片](${finalImageUrl})`,
                 attachments: [{
                     type: 'image',
                     title: '来自 ' + pageTitle,
-                    url: imageUrl,
+                    url: finalImageUrl,
                     content: `来源: ${pageUrl}`
                 }]
             });
@@ -192,7 +218,8 @@ async function fetchImageAsBase64(imageUrl) {
     try {
         const response = await fetch(imageUrl, {
             method: 'GET',
-            // 某些网站需要正确的 Referer
+            // 某些网站需要正确的 Referer，但背景脚本 fetch 不会自动带上 tab 的 referer
+            // 这里尽量模拟通用浏览器请求
             headers: {
                 'Accept': 'image/*,*/*;q=0.8'
             }
@@ -217,6 +244,43 @@ async function fetchImageAsBase64(imageUrl) {
     } catch (error) {
         console.error('fetchImageAsBase64 error:', error);
         throw error;
+    }
+}
+
+// 检测 URL 是否可访问
+async function checkUrlAccessible(url) {
+    try {
+        const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+        // 对于图片，如果返回 ok 说明基本可访问（即使是 no-cors）
+        // 如果是 403/404 等，会进入 catch 或 status 不对
+        return response.ok || response.type === 'opaque';
+    } catch (e) {
+        // 如果请求失败，说明可能有防盗链
+        return false;
+    }
+}
+
+// 上传到 imgbb
+async function uploadToImgbb(base64Image, apiKey) {
+    try {
+        const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+        const formData = new FormData();
+        formData.append('image', base64Data);
+        formData.append('key', apiKey);
+
+        const response = await fetch('https://api.imgbb.com/1/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        if (result.success && result.data?.url) {
+            return result.data.url;
+        }
+        return null;
+    } catch (err) {
+        console.error('imgbb upload error:', err);
+        return null;
     }
 }
 

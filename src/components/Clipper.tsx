@@ -599,16 +599,30 @@ const Clipper: React.FC = () => {
                 const uploadedUrls: string[] = [];
                 for (let i = 0; i < selectedImages.length; i++) {
                     const img = selectedImages[i];
-                    // Check if it's a base64 image (clipboard) or already a URL
+                    // Check if it's a base64 image (clipboard)
                     if (img.src.startsWith('data:')) {
                         const uploadedUrl = await uploadToImgbb(img.src, imgbbApiKey);
                         if (uploadedUrl) {
                             uploadedUrls.push(uploadedUrl);
                         } else {
-                            console.warn(`Failed to upload image ${i + 1}`);
+                            console.warn(`Failed to upload clipboard image ${i + 1}`);
                         }
                     } else {
-                        // Already a URL, use directly
+                        // 检测是否为防盗链图片
+                        const isAccessible = await checkImageAccessible(img.src);
+                        if (!isAccessible) {
+                            console.log('Detection: Hotlink protection for', img.src);
+                            // 尝试通过背景脚本抓取并上传
+                            const base64 = await fetchImageAsBase64(img.src);
+                            if (base64) {
+                                const uploadedUrl = await uploadToImgbb(base64, imgbbApiKey);
+                                if (uploadedUrl) {
+                                    uploadedUrls.push(uploadedUrl);
+                                    continue;
+                                }
+                            }
+                        }
+                        // 如果可访问或上传失败，退而求其实直接使用原始 URL
                         uploadedUrls.push(img.src);
                     }
                 }
