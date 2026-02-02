@@ -11,6 +11,7 @@ type Tab = 'memo' | 'recent' | 'clip' | 'settings';
 function App() {
     const [isAuth, setIsAuth] = useState<boolean | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('memo');
+    const [previousTab, setPreviousTab] = useState<Tab>('memo');
 
     useEffect(() => {
         checkAuth();
@@ -26,19 +27,6 @@ function App() {
             setActiveTab('settings');
         }
     };
-
-    if (isAuth === null) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-background text-foreground text-sm font-medium">
-                <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                    加载中...
-                </div>
-            </div>
-        );
-    }
-
-    const [previousTab, setPreviousTab] = useState<Tab>('memo');
 
     const handleTabChange = (tab: Tab) => {
         if (tab === 'settings' && activeTab !== 'settings') {
@@ -71,6 +59,18 @@ function App() {
                 return <Memo />;
         }
     };
+
+    // Loading state
+    if (isAuth === null) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-background text-foreground text-sm font-medium">
+                <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                    加载中...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden">
