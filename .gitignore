@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+
+# Build output (uncomment if you want to ignore dist)
+# dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Cache
+.npm-cache/
+
+# Zip files (generated packages)
+*.zip
+
+# Trae IDE
+.trae/
