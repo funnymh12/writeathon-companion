@@ -541,7 +541,7 @@ const Clipper: React.FC = () => {
                     return;
                 }
 
-                finalTitle = `图片剪藏 (${uploadedUrls.length}张)`;
+                finalTitle = new Date().toLocaleString('zh-CN');
                 // Build Markdown content with all images
                 finalContent = uploadedUrls.map((url, idx) => `![Image ${idx + 1}](${url})`).join('\n\n');
                 finalContent += `\n\n> 剪藏于 ${new Date().toLocaleString('zh-CN')}`;
