@@ -56,8 +56,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 token,
                 userId,
                 spaceId: selectedSpaceId,
-                title: pageTitle,
-                content: selectedText,
+                title: `剪藏 ${new Date().toLocaleString('zh-CN')}`,
+                content: `${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})`,
                 attachments: [{
                     type: 'link',
                     title: pageTitle,
@@ -153,8 +153,8 @@ async function handleQuickClip(tabId, pageTitle, pageUrl, selectedText) {
             token,
             userId,
             spaceId: selectedSpaceId,
-            title: pageTitle,
-            content: selectedText,
+            title: `剪藏 ${new Date().toLocaleString('zh-CN')}`,
+            content: `${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})`,
             attachments: [{
                 type: 'link',
                 title: pageTitle,
