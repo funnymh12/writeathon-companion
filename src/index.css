@@ -10,26 +10,26 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    /* 写拉松主题蓝色 */
-    --primary: 207 90% 54%;
+    /* 写拉松主题青色 */
+    --primary: 168 65% 50%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 168 40% 96%;
+    --secondary-foreground: 168 65% 30%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 207 90% 96%;
-    --accent-foreground: 207 90% 40%;
+    --accent: 168 65% 96%;
+    --accent-foreground: 168 65% 35%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 207 90% 54%;
+    --ring: 168 65% 50%;
     --radius: 0.5rem;
 
-    /* 写拉松品牌色 */
-    --writeathon-primary: #3B82F6;
-    --writeathon-primary-light: #60A5FA;
-    --writeathon-primary-dark: #2563EB;
+    /* 写拉松品牌色 - 青色渐变 */
+    --writeathon-primary: #4DB6AC;
+    --writeathon-primary-light: #80CBC4;
+    --writeathon-primary-dark: #26A69A;
   }
 
   .dark {
@@ -39,7 +39,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 207 90% 54%;
+    --primary: 168 65% 50%;
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -69,14 +69,14 @@
 /* 写拉松品牌样式 */
 @layer components {
   .btn-primary {
-    @apply bg-blue-500 hover:bg-blue-600 text-white transition-colors;
+    @apply bg-teal-500 hover:bg-teal-600 text-white transition-colors;
   }
 
   .btn-secondary {
-    @apply bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors;
+    @apply bg-teal-50 hover:bg-teal-100 text-teal-600 transition-colors;
   }
 
   .card-hover {
-    @apply hover:shadow-md hover:border-blue-200 transition-all duration-200;
+    @apply hover:shadow-md hover:border-teal-200 transition-all duration-200;
   }
 }
