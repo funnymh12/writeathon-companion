@@ -9,6 +9,7 @@
         "activeTab",
         "scripting",
         "clipboardRead",
+        "clipboardWrite",
         "contextMenus",
         "tabs"
     ],

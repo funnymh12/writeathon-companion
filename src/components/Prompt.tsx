@@ -142,12 +142,45 @@ const Prompt: React.FC = () => {
     // 复制 Prompt
     const handleCopy = async (prompt: PromptItem) => {
         const content = getPromptContent(prompt.content || '');
-        await navigator.clipboard.writeText(content);
-        setCopiedId(prompt._id || prompt.id || '');
-        setTimeout(() => setCopiedId(null), 2000);
+        const promptId = prompt._id || prompt.id || '';
 
-        // 记录使用
-        await recordUsage(prompt._id || prompt.id || '');
+        console.log('[Prompt] 开始复制:', promptId, content.substring(0, 50));
+
+        try {
+            // 尝试使用 Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(content);
+                console.log('[Prompt] 复制成功 (Clipboard API)');
+            } else {
+                // Fallback: 使用 execCommand
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                textArea.style.top = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                if (!successful) {
+                    throw new Error('execCommand copy failed');
+                }
+                console.log('[Prompt] 复制成功 (execCommand)');
+            }
+
+            setCopiedId(promptId);
+            setTimeout(() => setCopiedId(null), 2000);
+
+            // 记录使用
+            await recordUsage(promptId);
+        } catch (err) {
+            console.error('[Prompt] 复制失败:', err);
+            setError('复制失败，请手动复制');
+            setTimeout(() => setError(''), 3000);
+        }
     };
 
     // 记录使用历史
@@ -179,44 +212,93 @@ const Prompt: React.FC = () => {
     // 快速插入到页面输入框
     const handleInsert = async (prompt: PromptItem) => {
         const content = getPromptContent(prompt.content || '');
+        console.log('[Prompt] 开始插入:', content.substring(0, 50));
 
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab?.id) return;
+            console.log('[Prompt] 当前标签页:', tab?.id, tab?.url);
 
-            await chrome.scripting.executeScript({
+            if (!tab?.id) {
+                console.error('[Prompt] 无法获取当前标签页');
+                // 回退到复制
+                await handleCopy(prompt);
+                return;
+            }
+
+            // 检查是否是受限页面
+            if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('edge://')) {
+                console.log('[Prompt] 受限页面，回退到复制');
+                await handleCopy(prompt);
+                return;
+            }
+
+            const result = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: (text: string) => {
-                    // 查找可能的输入框
+                    console.log('[Prompt Content Script] 开始查找输入框');
+
+                    // 查找可能的输入框，按优先级排序
                     const selectors = [
-                        'textarea',
-                        '[contenteditable="true"]',
-                        'input[type="text"]',
-                        '[role="textbox"]'
+                        // 常见 AI 对话框选择器
+                        'textarea[placeholder*="消息"]',
+                        'textarea[placeholder*="输入"]',
+                        'textarea[placeholder*="Message"]',
+                        'textarea[data-id]',
+                        '[contenteditable="true"][data-placeholder]',
+                        // 通用选择器
+                        'textarea:not([readonly]):not([disabled])',
+                        '[contenteditable="true"]:not([aria-readonly="true"])',
+                        '[role="textbox"]:not([aria-readonly="true"])',
+                        'input[type="text"]:not([readonly]):not([disabled])'
                     ];
 
                     for (const selector of selectors) {
-                        const el = document.querySelector(selector) as HTMLElement;
-                        if (el) {
-                            if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-                                (el as HTMLInputElement).value = text;
-                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                        const elements = document.querySelectorAll(selector);
+                        for (const el of elements) {
+                            const htmlEl = el as HTMLElement;
+                            // 检查元素是否可见
+                            const rect = htmlEl.getBoundingClientRect();
+                            if (rect.width === 0 || rect.height === 0) continue;
+
+                            const style = window.getComputedStyle(htmlEl);
+                            if (style.display === 'none' || style.visibility === 'hidden') continue;
+
+                            console.log('[Prompt Content Script] 找到输入框:', selector, htmlEl.tagName);
+
+                            if (htmlEl.tagName === 'TEXTAREA' || htmlEl.tagName === 'INPUT') {
+                                const inputEl = htmlEl as HTMLInputElement | HTMLTextAreaElement;
+                                inputEl.value = text;
+                                inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                inputEl.dispatchEvent(new Event('change', { bubbles: true }));
                             } else {
-                                el.textContent = text;
-                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                // contenteditable
+                                htmlEl.textContent = text;
+                                htmlEl.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
                             }
-                            el.focus();
-                            return true;
+                            htmlEl.focus();
+                            return { success: true, selector };
                         }
                     }
-                    return false;
+
+                    console.log('[Prompt Content Script] 未找到输入框');
+                    return { success: false };
                 },
                 args: [content]
             });
 
-            await recordUsage(prompt._id || prompt.id || '');
+            console.log('[Prompt] 脚本执行结果:', result);
+
+            if (result && result[0]?.result?.success) {
+                console.log('[Prompt] 插入成功');
+                setCopiedId(prompt._id || prompt.id || '');
+                setTimeout(() => setCopiedId(null), 2000);
+                await recordUsage(prompt._id || prompt.id || '');
+            } else {
+                console.log('[Prompt] 未找到输入框，回退到复制');
+                await handleCopy(prompt);
+            }
         } catch (err) {
-            console.error('插入失败:', err);
+            console.error('[Prompt] 插入失败:', err);
             // 回退到复制
             await handleCopy(prompt);
         }
