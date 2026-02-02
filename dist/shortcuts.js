@@ -64,7 +64,25 @@ document.addEventListener('keydown', (event) => {
         console.log('[Writeathon] Global shortcut triggered:', globalShortcut);
 
         // 获取当前选中的文本
-        const selection = window.getSelection()?.toString() || '';
+        // 获取当前选中的内容 (包含图片处理)
+        const selectionObj = window.getSelection();
+        let selection = '';
+
+        if (selectionObj && selectionObj.rangeCount > 0 && !selectionObj.isCollapsed) {
+            const container = document.createElement('div');
+            container.appendChild(selectionObj.getRangeAt(0).cloneContents());
+
+            // Replace images with Markdown
+            container.querySelectorAll('img').forEach(img => {
+                const alt = img.alt || '图片';
+                const src = img.src; // Absolute URL
+                if (src) {
+                    const textNode = document.createTextNode(`![${alt}](${src})`);
+                    img.parentNode?.replaceChild(textNode, img);
+                }
+            });
+            selection = container.innerText || selectionObj.toString();
+        }
 
         // 发送消息给 background script
         chrome.runtime.sendMessage({

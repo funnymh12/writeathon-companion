@@ -99,12 +99,7 @@ export class WriteathonClient {
         });
     }
 
-    async updateCard(cardId: string, content: string, title?: string): Promise<WriteathonResponse<any>> {
-        return this.request('/v1/users/:id/cards/update', {
-            method: 'POST',
-            body: JSON.stringify({ id: cardId, content, title }),
-        });
-    }
+
 
     async extendCard(parent: string, content: string, title?: string): Promise<WriteathonResponse<any>> {
         return this.request('/v1/users/:id/cards/extend', {

@@ -16,11 +16,6 @@ const Recent: React.FC = () => {
     const [selectedCard, setSelectedCard] = useState<Card | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Edit mode
-    const [isEditing, setIsEditing] = useState(false);
-    const [editTitle, setEditTitle] = useState('');
-    const [editContent, setEditContent] = useState('');
-
     // Extend mode
     const [isExtending, setIsExtending] = useState(false);
     const [extensionContent, setExtensionContent] = useState('');
@@ -99,19 +94,7 @@ const Recent: React.FC = () => {
                 // Check if card already has content (from pick API)
                 if (card.content) {
                     setSelectedCard(card);
-                    setEditTitle(card.title || '');
-                    setEditContent(card.content || '');
-                    setView('detail');
-                } else {
-                    const response = await client.getCardDetail(card._id || card.id || '');
-                    if (response.success && response.data) {
-                        setSelectedCard(response.data);
-                        setEditTitle(response.data.title || '');
-                        setEditContent(response.data.content || '');
-                        setView('detail');
-                    }
                 }
-                setIsEditing(false);
                 setIsExtending(false);
             }
         } catch (err: any) {
@@ -122,48 +105,7 @@ const Recent: React.FC = () => {
         }
     };
 
-    const handleSaveEdit = async () => {
-        if (!selectedCard || !editContent.trim()) return;
 
-        setSaving(true);
-        setStatus('idle');
-        setError('');
-
-        try {
-            const data = await storage.get();
-            if (data.token && data.userId) {
-                const client = new WriteathonClient(data.token, data.userId);
-
-                // Use updateCard instead of createCard (which acts as append)
-                // Assuming updateCard is implemented in API
-                const response = await client.updateCard(
-                    selectedCard._id || selectedCard.id || '',
-                    editContent,
-                    editTitle.trim() || undefined
-                );
-
-                if (response.success) {
-                    setStatus('success');
-                    setIsEditing(false);
-                    // Update the selected card locally
-                    setSelectedCard({
-                        ...selectedCard,
-                        content: editContent,
-                        title: editTitle.trim() || selectedCard.title,
-                    });
-                    setTimeout(() => setStatus('idle'), 2000);
-                } else {
-                    setStatus('error');
-                    setError(response.message || '保存失败');
-                }
-            }
-        } catch (err: any) {
-            setStatus('error');
-            setError(err.message || '保存失败');
-        } finally {
-            setSaving(false);
-        }
-    };
 
     const handleExtend = async () => {
         if (!extensionContent.trim() || !selectedCard) return;
@@ -204,7 +146,6 @@ const Recent: React.FC = () => {
     const handleBack = () => {
         setView('list');
         setSelectedCard(null);
-        setIsEditing(false);
         setIsExtending(false);
         setError('');
         if (activeTab === 'recent') {
@@ -241,19 +182,12 @@ const Recent: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
-                        {!isEditing && !isExtending && (
+                        {!isExtending && (
                             <>
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    className="p-2 hover:bg-teal-50 text-teal-600 rounded-lg transition-colors"
-                                    title="编辑"
-                                >
-                                    <Edit3 className="h-4 w-4" />
-                                </button>
                                 <button
                                     onClick={() => setIsExtending(true)}
                                     className="p-2 hover:bg-green-50 text-green-600 rounded-lg transition-colors"
-                                    title="添加扩展"
+                                    title="追加内容"
                                 >
                                     <Plus className="h-4 w-4" />
                                 </button>
@@ -270,47 +204,20 @@ const Recent: React.FC = () => {
                         </div>
                     ) : (
                         <>
-                            {/* Card Content */}
-                            {isEditing ? (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                            标题
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editTitle}
-                                            onChange={(e) => setEditTitle(e.target.value)}
-                                            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                            内容
-                                        </label>
-                                        <textarea
-                                            value={editContent}
-                                            onChange={(e) => setEditContent(e.target.value)}
-                                            rows={15}
-                                            className="flex w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none font-mono text-xs leading-relaxed"
-                                        />
-                                    </div>
+                            {/* Card Content Display Only */}
+                            <div className="bg-white rounded-lg border border-gray-100 p-4 space-y-3">
+                                <h3 className="font-medium text-gray-900">
+                                    {selectedCard.title || '无标题'}
+                                </h3>
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-mono select-text">
+                                    {selectedCard.content || '(无内容)'}
                                 </div>
-                            ) : (
-                                <div className="bg-white rounded-lg border border-gray-100 p-4 space-y-3">
-                                    <h3 className="font-medium text-gray-900">
-                                        {selectedCard.title || '无标题'}
-                                    </h3>
-                                    <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-mono">
-                                        {selectedCard.content || '(无内容)'}
+                                {selectedCard.updated && (
+                                    <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
+                                        更新于: {new Date(selectedCard.updated).toLocaleString('zh-CN')}
                                     </div>
-                                    {selectedCard.updated && (
-                                        <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
-                                            更新于: {new Date(selectedCard.updated).toLocaleString('zh-CN')}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             {/* Extend Section */}
                             {isExtending && (
@@ -344,14 +251,12 @@ const Recent: React.FC = () => {
                             )}
 
                             {/* Action Buttons */}
-                            {(isEditing || isExtending) && (
+                            {/* Action Buttons */}
+                            {isExtending && (
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => {
-                                            setIsEditing(false);
                                             setIsExtending(false);
-                                            setEditTitle(selectedCard.title || '');
-                                            setEditContent(selectedCard.content || '');
                                             setExtensionContent('');
                                             setExtensionTitle('');
                                         }}
@@ -360,13 +265,11 @@ const Recent: React.FC = () => {
                                         取消
                                     </button>
                                     <button
-                                        onClick={isEditing ? handleSaveEdit : handleExtend}
-                                        disabled={saving || (isEditing ? !editContent.trim() : !extensionContent.trim())}
+                                        onClick={handleExtend}
+                                        disabled={saving || !extensionContent.trim()}
                                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white transition-colors disabled:opacity-50 ${status === 'success'
                                             ? 'bg-green-600'
-                                            : isEditing
-                                                ? 'bg-teal-600 hover:bg-teal-700'
-                                                : 'bg-green-600 hover:bg-green-700'
+                                            : 'bg-green-600 hover:bg-green-700'
                                             }`}
                                     >
                                         {saving ? (
@@ -378,8 +281,8 @@ const Recent: React.FC = () => {
                                             </>
                                         ) : (
                                             <>
-                                                {isEditing ? <Save className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-                                                {isEditing ? '保存修改' : '添加扩展'}
+                                                <Send className="h-4 w-4" />
+                                                添加扩展
                                             </>
                                         )}
                                     </button>

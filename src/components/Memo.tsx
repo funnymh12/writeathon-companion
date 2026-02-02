@@ -189,6 +189,16 @@ const Memo: React.FC = () => {
                     const quotedLines = quote.trim().split('\n').map(line => `> ${line}`).join('\n');
                     finalContent = quotedLines;
 
+                    // Try to append source URL
+                    try {
+                        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                        if (tab && tab.url && tab.title && !tab.url.startsWith('chrome://')) {
+                            finalContent += `\n\n> 来源: [${tab.title}](${tab.url})`;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to get tab info for source link', e);
+                    }
+
                     if (content.trim()) {
                         finalContent += '\n\n' + content.trim();
                     }
