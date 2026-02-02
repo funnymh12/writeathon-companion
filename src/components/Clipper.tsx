@@ -804,9 +804,21 @@ const Clipper: React.FC = () => {
                                     className="w-full text-lg font-bold text-gray-800 placeholder:text-gray-300 border-none focus:ring-0 px-0 py-1 bg-transparent"
                                     placeholder="标题"
                                 />
-                                <div className="flex items-center gap-4 text-[10px] text-gray-400">
-                                    <span>{stats.words} 字</span>
-                                    <span>{stats.images} 图</span>
+                                <div className="flex items-center justify-between text-[10px] text-gray-400">
+                                    <div className="flex items-center gap-4">
+                                        <span>{stats.words} 字</span>
+                                        <span>{stats.images} 图</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleClip}
+                                        disabled={loading}
+                                        className="flex items-center gap-1 px-2 py-0.5 hover:text-teal-600 transition-colors group"
+                                        title="重新提取全文"
+                                    >
+                                        <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin text-teal-500' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                                        <span>重新提取</span>
+                                    </button>
                                 </div>
                                 <textarea
                                     value={content}
