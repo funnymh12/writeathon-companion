@@ -346,10 +346,10 @@ const Recent: React.FC = () => {
                                         onClick={isEditing ? handleSaveEdit : handleExtend}
                                         disabled={saving || (isEditing ? !editContent.trim() : !extensionContent.trim())}
                                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white transition-colors disabled:opacity-50 ${status === 'success'
-                                                ? 'bg-green-600'
-                                                : isEditing
-                                                    ? 'bg-blue-600 hover:bg-blue-700'
-                                                    : 'bg-green-600 hover:bg-green-700'
+                                            ? 'bg-green-600'
+                                            : isEditing
+                                                ? 'bg-blue-600 hover:bg-blue-700'
+                                                : 'bg-green-600 hover:bg-green-700'
                                             }`}
                                     >
                                         {saving ? (
@@ -384,8 +384,8 @@ const Recent: React.FC = () => {
                     <button
                         onClick={() => handleTabChange('recent')}
                         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'recent'
-                                ? 'bg-black text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-black text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         最近卡片
@@ -393,8 +393,8 @@ const Recent: React.FC = () => {
                     <button
                         onClick={() => handleTabChange('pick')}
                         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'pick'
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
-                                : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                            : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                             }`}
                     >
                         <Sparkles className="h-4 w-4" />
@@ -402,25 +402,35 @@ const Recent: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Search Box - Only for Recent */}
+                {/* Search Box and Refresh - Only for Recent */}
                 {activeTab === 'recent' && (
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="搜索卡片..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full"
-                            >
-                                <X className="h-3 w-3 text-gray-400" />
-                            </button>
-                        )}
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="搜索卡片..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full"
+                                >
+                                    <X className="h-3 w-3 text-gray-400" />
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={fetchRecentCards}
+                            disabled={loading}
+                            className="h-10 px-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+                            title="刷新"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
                     </div>
                 )}
 

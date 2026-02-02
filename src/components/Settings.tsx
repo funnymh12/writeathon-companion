@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { WriteathonClient } from '../utils/api';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 
 interface SettingsProps {
     onSuccess: () => void;
+    onBack?: () => void;
+    isAuthenticated?: boolean;
 }
 
-const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
+const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated }) => {
     const [token, setToken] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -67,11 +69,23 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess }) => {
 
     return (
         <div className="flex flex-col gap-6 p-4">
-            <div className="space-y-2">
-                <h2 className="text-xl font-semibold tracking-tight">设置</h2>
-                <p className="text-sm text-muted-foreground">
-                    输入你的写拉松集成 Token 以连接账户
-                </p>
+            {/* Header with Back Button */}
+            <div className="flex items-center gap-3">
+                {isAuthenticated && onBack && (
+                    <button
+                        onClick={onBack}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        title="返回"
+                    >
+                        <ArrowLeft className="h-5 w-5 text-gray-600" />
+                    </button>
+                )}
+                <div className="space-y-1">
+                    <h2 className="text-xl font-semibold tracking-tight">设置</h2>
+                    <p className="text-sm text-muted-foreground">
+                        {status === 'connected' ? '管理你的账户连接' : '输入你的写拉松集成 Token 以连接账户'}
+                    </p>
+                </div>
             </div>
 
             {status === 'connected' ? (

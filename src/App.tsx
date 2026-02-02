@@ -38,6 +38,19 @@ function App() {
         );
     }
 
+    const [previousTab, setPreviousTab] = useState<Tab>('memo');
+
+    const handleTabChange = (tab: Tab) => {
+        if (tab === 'settings' && activeTab !== 'settings') {
+            setPreviousTab(activeTab);
+        }
+        setActiveTab(tab);
+    };
+
+    const handleSettingsBack = () => {
+        setActiveTab(previousTab);
+    };
+
     const renderContent = () => {
         switch (activeTab) {
             case 'memo':
@@ -47,7 +60,13 @@ function App() {
             case 'clip':
                 return <Clipper />;
             case 'settings':
-                return <Settings onSuccess={() => { setIsAuth(true); setActiveTab('memo'); }} />;
+                return (
+                    <Settings
+                        onSuccess={() => { setIsAuth(true); setActiveTab('memo'); }}
+                        onBack={handleSettingsBack}
+                        isAuthenticated={isAuth === true}
+                    />
+                );
             default:
                 return <Memo />;
         }
@@ -63,7 +82,7 @@ function App() {
                 </div>
                 {isAuth && (
                     <button
-                        onClick={() => setActiveTab('settings')}
+                        onClick={() => handleTabChange('settings')}
                         className={`rounded-full p-2 hover:bg-muted transition-colors ${activeTab === 'settings' ? 'text-black bg-gray-100' : 'text-muted-foreground'}`}
                     >
                         <SettingsIcon className="h-5 w-5" />
