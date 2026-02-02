@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Card, Space } from '../utils/api';
 import { storage } from '../utils/storage';
-import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw } from 'lucide-react';
+import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw, Copy } from 'lucide-react';
 
 type View = 'list' | 'detail' | 'pick';
 type Tab = 'recent' | 'pick';
@@ -26,6 +26,7 @@ const Recent: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [error, setError] = useState('');
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         fetchSpaces();
@@ -223,6 +224,17 @@ const Recent: React.FC = () => {
         }
     };
 
+    const handleCopy = async () => {
+        if (!selectedCard?.content) return;
+        try {
+            await navigator.clipboard.writeText(selectedCard.content);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Copy failed', err);
+        }
+    };
+
     const handleBack = () => {
         setView('list');
         setSelectedCard(null);
@@ -262,6 +274,13 @@ const Recent: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleCopy}
+                            className="p-2 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                            title="复制内容"
+                        >
+                            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                        </button>
                         {!isExtending && (
                             <>
                                 <button
