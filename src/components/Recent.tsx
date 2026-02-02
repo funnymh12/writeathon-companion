@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Card, Space } from '../utils/api';
 import { storage } from '../utils/storage';
-import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw, Copy } from 'lucide-react';
+import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw, Copy, FilePlus, CornerDownLeft } from 'lucide-react';
 
 type View = 'list' | 'detail' | 'pick';
 type Tab = 'recent' | 'pick';
@@ -257,150 +257,121 @@ const Recent: React.FC = () => {
     // Detail View
     if (view === 'detail' && selectedCard) {
         return (
-            <div className="flex flex-col h-full bg-[#fafafa]">
-                {/* Header */}
-                <div className="p-4 bg-white border-b sticky top-0 z-10 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+            <div className="flex flex-col h-full bg-white relative">
+                {/* Secondary Header - Detail specific */}
+                <div className="px-4 py-3 border-b flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-20 shrink-0">
+                    <div className="flex items-center gap-3 overflow-hidden">
                         <button
                             onClick={handleBack}
-                            className="p-1 hover:bg-muted rounded-full transition-colors"
+                            className="p-1.5 -ml-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-black truncate max-w-[200px]">
+                        <h2 className="text-base font-semibold text-gray-900 truncate">
                             {selectedCard?.title || '卡片详情'}
                         </h2>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleCopy}
-                            className="p-2 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
-                            title="复制内容"
-                        >
-                            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                        </button>
-                        {!isExtending && (
-                            <>
-                                <button
-                                    onClick={() => setIsExtending(true)}
-                                    className="p-2 hover:bg-green-50 text-green-600 rounded-lg transition-colors"
-                                    title="追加内容"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                </button>
-                            </>
-                        )}
-                    </div>
+                    <button
+                        onClick={handleCopy}
+                        className="p-2 hover:bg-gray-50 text-gray-500 rounded-lg transition-colors"
+                        title="复制全文"
+                    >
+                        {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    </button>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Content Area */}
+                <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
                     {loading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
                         </div>
                     ) : (
-                        <>
-                            {/* Card Content Display Only */}
-                            <div className="bg-white rounded-lg border border-gray-100 p-4 space-y-3">
-                                <h3 className="font-medium text-gray-900">
-                                    {selectedCard.title || '无标题'}
-                                </h3>
-                                <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-mono select-text">
+                        <div className="space-y-8 pb-10">
+                            {/* 1. Card Body - Minimalist Reading Experience */}
+                            <div className="space-y-2">
+                                <div className="text-[15px] leading-7 text-gray-700 whitespace-pre-wrap font-sans select-text">
                                     {selectedCard.content || '(无内容)'}
                                 </div>
                                 {selectedCard.updated && (
-                                    <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
-                                        更新于: {new Date(selectedCard.updated).toLocaleString('zh-CN')}
+                                    <div className="text-xs text-gray-300 font-normal pt-4">
+                                        更新于 {new Date(selectedCard.updated).toLocaleString('zh-CN')}
                                     </div>
                                 )}
                             </div>
 
-                            {/* Extend Section */}
-                            {isExtending && (
-                                <div className="space-y-3 bg-green-50 p-4 rounded-lg border border-green-100">
-                                    <label className="text-[10px] font-bold text-green-700 uppercase tracking-widest flex items-center gap-1">
-                                        <Plus className="h-3 w-3" />
-                                        添加内容
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="标题（可选，仅用于扩展卡片）"
-                                        value={extensionTitle}
-                                        onChange={(e) => setExtensionTitle(e.target.value)}
-                                        className="flex h-10 w-full rounded-md border border-green-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-300"
-                                    />
-                                    <textarea
-                                        placeholder="输入要追加的内容..."
-                                        value={extensionContent}
-                                        onChange={(e) => setExtensionContent(e.target.value)}
-                                        rows={5}
-                                        className="flex w-full rounded-md border border-green-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-300 resize-none"
-                                    />
-                                </div>
-                            )}
+                            {/* Divider line for Append Section */}
+                            <div className="border-t border-dashed border-gray-100 w-full" />
 
-                            {/* Error Message */}
-                            {error && (
-                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">
-                                    {error}
-                                </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            {/* Action Buttons */}
-                            {isExtending && (
-                                <div className="flex gap-2">
+                            {/* 2. Input Area - Integrated */}
+                            <div className="space-y-4 pt-1">
+                                {!isExtending ? (
                                     <button
-                                        onClick={() => {
-                                            setIsExtending(false);
-                                            setExtensionContent('');
-                                            setExtensionTitle('');
-                                        }}
-                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                        onClick={() => setIsExtending(true)}
+                                        className="w-full py-3 border border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:text-teal-600 hover:border-teal-200 hover:bg-teal-50/30 transition-all flex items-center justify-center gap-2 group"
                                     >
-                                        取消
+                                        <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                                        添加内容或扩展
                                     </button>
-
-                                    <button
-                                        onClick={handleAppend}
-                                        disabled={saving || !extensionContent.trim()}
-                                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-50 bg-teal-600 hover:bg-teal-700`}
-                                        title="追加内容到当前卡片末尾"
-                                    >
-                                        <div className="flex flex-col items-center">
-                                            <span className="font-bold">追加</span>
-                                            <span className="text-[9px] opacity-80">到本卡片</span>
+                                ) : (
+                                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                        <div className="space-y-3">
+                                            <input
+                                                type="text"
+                                                placeholder="标题（可选，仅用于扩展新卡片）"
+                                                value={extensionTitle}
+                                                onChange={(e) => setExtensionTitle(e.target.value)}
+                                                className="w-full bg-transparent border-b border-gray-100 px-1 py-2 text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder:text-gray-300"
+                                            />
+                                            <textarea
+                                                placeholder="输入想法..."
+                                                value={extensionContent}
+                                                onChange={(e) => setExtensionContent(e.target.value)}
+                                                rows={4}
+                                                autoFocus
+                                                className="w-full bg-transparent border border-gray-100 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 transition-all resize-none placeholder:text-gray-300 leading-relaxed block"
+                                            />
                                         </div>
-                                    </button>
-                                    <button
-                                        onClick={handleExtend}
-                                        disabled={saving || !extensionContent.trim()}
-                                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-50 ${status === 'success'
-                                            ? 'bg-green-600'
-                                            : 'bg-green-600 hover:bg-green-700'
-                                            }`}
-                                        title="创建一张新的子卡片连接到当前卡片"
-                                    >
-                                        {status === 'success' ? (
-                                            <div className="flex items-center gap-1">
-                                                <Check className="h-3 w-3" /> 已保存
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-bold">扩展</span>
-                                                <span className="text-[9px] opacity-80">新建子卡片</span>
-                                            </div>
-                                        )}
-                                    </button>
-                                </div>
-                            )}
-                        </>
+
+                                        {/* 3. Action Toolbar Action Buttons */}
+                                        <div className="flex items-center gap-3 mt-4">
+                                            <button
+                                                onClick={() => {
+                                                    setIsExtending(false);
+                                                    setExtensionContent('');
+                                                    setExtensionTitle('');
+                                                }}
+                                                className="px-4 py-2 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                                            >
+                                                取消
+                                            </button>
+                                            <div className="flex-1" />
+                                            <button
+                                                onClick={handleExtend}
+                                                disabled={saving || !extensionContent.trim()}
+                                                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-teal-600 border border-teal-100 hover:bg-teal-50 transition-colors disabled:opacity-50"
+                                                title="创建子卡片"
+                                            >
+                                                {status === 'success' ? <Check className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
+                                                扩展
+                                            </button>
+                                            <button
+                                                onClick={handleAppend}
+                                                disabled={saving || !extensionContent.trim()}
+                                                className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 shadow-sm shadow-teal-200 transition-all disabled:opacity-50 disabled:shadow-none"
+                                                title="追加到当前卡片"
+                                            >
+                                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CornerDownLeft className="h-3.5 w-3.5" />}
+                                                追加
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
-            </div >
+            </div>
         );
     }
 
