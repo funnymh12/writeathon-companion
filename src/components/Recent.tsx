@@ -91,9 +91,16 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
-                // Check if card already has content (from pick API)
+                // Check if card already has content (from pick API) or fetches it
                 if (card.content) {
                     setSelectedCard(card);
+                    setView('detail');
+                } else {
+                    const response = await client.getCardDetail(card._id || card.id || '');
+                    if (response.success && response.data) {
+                        setSelectedCard(response.data);
+                        setView('detail');
+                    }
                 }
                 setIsExtending(false);
             }
