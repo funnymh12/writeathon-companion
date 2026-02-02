@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { WriteathonClient, Card } from '../utils/api';
+import { WriteathonClient, Card, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw } from 'lucide-react';
 
@@ -12,6 +12,8 @@ const Recent: React.FC = () => {
     const [cards, setCards] = useState<Card[]>([]);
     const [filteredCards, setFilteredCards] = useState<Card[]>([]);
     const [pickedCards, setPickedCards] = useState<Card[]>([]);
+    const [spaces, setSpaces] = useState<Space[]>([]);
+    const [selectedSpace, setSelectedSpace] = useState('');
     const [loading, setLoading] = useState(false);
     const [selectedCard, setSelectedCard] = useState<Card | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,8 +28,14 @@ const Recent: React.FC = () => {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetchRecentCards();
+        fetchSpaces();
     }, []);
+
+    useEffect(() => {
+        if (selectedSpace || spaces.length === 0) {
+            fetchRecentCards();
+        }
+    }, [selectedSpace]); // Re-fetch when space changes
 
     useEffect(() => {
         // Filter cards based on search query
@@ -49,7 +57,8 @@ const Recent: React.FC = () => {
             const data = await storage.get();
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
-                const response = await client.getRecentCards(false);
+                // Use selectedSpace if available
+                const response = await client.getRecentCards(false, selectedSpace || undefined);
                 if (response.success && response.data) {
                     setCards(response.data);
                     setFilteredCards(response.data);
@@ -59,6 +68,28 @@ const Recent: React.FC = () => {
             console.error('获取最近卡片失败', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchSpaces = async () => {
+        try {
+            const data = await storage.get();
+            if (data.token && data.userId) {
+                const client = new WriteathonClient(data.token, data.userId);
+                const response = await client.getSpaces();
+                if (response.success && response.data) {
+                    setSpaces(response.data);
+                    // Load saved space preference
+                    if (data.selectedSpaceId) {
+                        const saved = response.data.find(s => (s._id || s.id) === data.selectedSpaceId);
+                        if (saved) {
+                            setSelectedSpace(data.selectedSpaceId);
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('获取空间列表失败', err);
         }
     };
 
@@ -150,6 +181,48 @@ const Recent: React.FC = () => {
         }
     };
 
+    const handleAppend = async () => {
+        if (!extensionContent.trim() || !selectedCard) return;
+
+        setSaving(true);
+        setStatus('idle');
+        setError('');
+
+        try {
+            const data = await storage.get();
+            if (data.token && data.userId) {
+                const client = new WriteathonClient(data.token, data.userId);
+                // "Create" with existing title appends to the card
+                const response = await client.createCard({
+                    title: selectedCard.title,
+                    content: extensionContent,
+                    space: selectedSpace || undefined
+                });
+
+                if (response.success) {
+                    setExtensionContent('');
+                    setExtensionTitle('');
+                    setStatus('success');
+                    setIsExtending(false);
+                    // Update local card content immediately for better UX
+                    setSelectedCard({
+                        ...selectedCard,
+                        content: (selectedCard.content || '') + '\n\n' + extensionContent
+                    });
+                    setTimeout(() => setStatus('idle'), 2000);
+                } else {
+                    setStatus('error');
+                    setError(response.message || '追加失败');
+                }
+            }
+        } catch (err: any) {
+            setStatus('error');
+            setError(err.message || '追加失败');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleBack = () => {
         setView('list');
         setSelectedCard(null);
@@ -231,11 +304,11 @@ const Recent: React.FC = () => {
                                 <div className="space-y-3 bg-green-50 p-4 rounded-lg border border-green-100">
                                     <label className="text-[10px] font-bold text-green-700 uppercase tracking-widest flex items-center gap-1">
                                         <Plus className="h-3 w-3" />
-                                        添加扩展卡片
+                                        添加内容
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="标题（可选）"
+                                        placeholder="标题（可选，仅用于扩展卡片）"
                                         value={extensionTitle}
                                         onChange={(e) => setExtensionTitle(e.target.value)}
                                         className="flex h-10 w-full rounded-md border border-green-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-300"
@@ -271,26 +344,36 @@ const Recent: React.FC = () => {
                                     >
                                         取消
                                     </button>
+
+                                    <button
+                                        onClick={handleAppend}
+                                        disabled={saving || !extensionContent.trim()}
+                                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-50 bg-teal-600 hover:bg-teal-700`}
+                                        title="追加内容到当前卡片末尾"
+                                    >
+                                        <div className="flex flex-col items-center">
+                                            <span className="font-bold">追加</span>
+                                            <span className="text-[9px] opacity-80">到本卡片</span>
+                                        </div>
+                                    </button>
                                     <button
                                         onClick={handleExtend}
                                         disabled={saving || !extensionContent.trim()}
-                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white transition-colors disabled:opacity-50 ${status === 'success'
+                                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-md text-xs font-medium text-white transition-colors disabled:opacity-50 ${status === 'success'
                                             ? 'bg-green-600'
                                             : 'bg-green-600 hover:bg-green-700'
                                             }`}
+                                        title="创建一张新的子卡片连接到当前卡片"
                                     >
-                                        {saving ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : status === 'success' ? (
-                                            <>
-                                                <Check className="h-4 w-4" />
-                                                已保存
-                                            </>
+                                        {status === 'success' ? (
+                                            <div className="flex items-center gap-1">
+                                                <Check className="h-3 w-3" /> 已保存
+                                            </div>
                                         ) : (
-                                            <>
-                                                <Send className="h-4 w-4" />
-                                                添加扩展
-                                            </>
+                                            <div className="flex flex-col items-center">
+                                                <span className="font-bold">扩展</span>
+                                                <span className="text-[9px] opacity-80">新建子卡片</span>
+                                            </div>
                                         )}
                                     </button>
                                 </div>
@@ -298,7 +381,7 @@ const Recent: React.FC = () => {
                         </>
                     )}
                 </div>
-            </div>
+            </div >
         );
     }
 
@@ -310,24 +393,42 @@ const Recent: React.FC = () => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => handleTabChange('recent')}
-                        className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${activeTab === 'recent'
+                        className={`flex-1 py-2 px-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'recent'
                             ? 'bg-teal-500 text-white'
                             : 'bg-teal-50 text-teal-600 hover:bg-teal-100'
                             }`}
                     >
-                        最近卡片
+                        最近
                     </button>
                     <button
                         onClick={() => handleTabChange('pick')}
-                        className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'pick'
+                        className={`flex-1 py-2 px-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeTab === 'pick'
                             ? 'bg-gradient-to-r from-teal-400 to-teal-600 text-white'
                             : 'bg-teal-50 text-teal-600 hover:bg-teal-100'
                             }`}
                     >
-                        <Sparkles className="h-4 w-4" />
+                        <Sparkles className="h-3 w-3" />
                         拾贝
                     </button>
                 </div>
+                {/* Space Selector */}
+                {spaces.length > 0 && (
+                    <select
+                        value={selectedSpace}
+                        onChange={async (e) => {
+                            const newSpaceId = e.target.value;
+                            setSelectedSpace(newSpaceId);
+                            const spaceName = spaces.find(s => (s._id || s.id) === newSpaceId)?.title || '默认空间';
+                            await storage.set({ selectedSpaceId: newSpaceId, selectedSpaceName: spaceName });
+                        }}
+                        className="w-full h-8 text-xs border border-gray-200 rounded-md px-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                        <option value="">所有空间 / 默认空间</option>
+                        {spaces.filter(s => s.title !== '默认空间').map(s => (
+                            <option key={s._id || s.id} value={s._id || s.id}>{s.title}</option>
+                        ))}
+                    </select>
+                )}
 
                 {/* Search Box and Refresh - Only for Recent */}
                 {activeTab === 'recent' && (

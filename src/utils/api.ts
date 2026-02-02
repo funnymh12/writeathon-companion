@@ -87,8 +87,11 @@ export class WriteathonClient {
         });
     }
 
-    async getRecentCards(excludeDateTitle: boolean = false): Promise<WriteathonResponse<Card[]>> {
-        const query = excludeDateTitle ? '?exclude_date_title=true' : '';
+    async getRecentCards(excludeDateTitle: boolean = false, spaceId?: string): Promise<WriteathonResponse<Card[]>> {
+        let query = excludeDateTitle ? '?exclude_date_title=true' : '';
+        if (spaceId) {
+            query += (query ? '&' : '?') + `space=${spaceId}`;
+        }
         return this.request<Card[]>(`/v1/users/:id/cards/recent${query}`);
     }
 
