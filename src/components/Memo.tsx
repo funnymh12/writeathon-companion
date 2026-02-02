@@ -94,7 +94,28 @@ const Memo: React.FC = () => {
 
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
-                func: () => window.getSelection()?.toString() || ''
+                func: () => {
+                    const selection = window.getSelection();
+                    if (!selection || selection.rangeCount === 0) return '';
+                    if (selection.isCollapsed) return '';
+
+                    const container = document.createElement('div');
+                    container.appendChild(selection.getRangeAt(0).cloneContents());
+
+                    // Replace images with Markdown
+                    container.querySelectorAll('img').forEach(img => {
+                        const alt = img.alt || '图片';
+                        // Use absolute URL
+                        const src = img.src;
+                        if (src) {
+                            const textNode = document.createTextNode(`![${alt}](${src})`);
+                            img.parentNode?.replaceChild(textNode, img);
+                        }
+                    });
+
+                    // Basic cleanup to preserve some spacing
+                    return container.innerText || selection.toString();
+                }
             });
 
             const selectedText = results[0]?.result;

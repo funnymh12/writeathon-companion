@@ -134,10 +134,13 @@ const Recent: React.FC = () => {
             if (data.token && data.userId) {
                 const client = new WriteathonClient(data.token, data.userId);
 
-                const response = await client.createCard({
-                    content: editContent,
-                    title: editTitle.trim() || selectedCard.title,
-                });
+                // Use updateCard instead of createCard (which acts as append)
+                // Assuming updateCard is implemented in API
+                const response = await client.updateCard(
+                    selectedCard._id || selectedCard.id || '',
+                    editContent,
+                    editTitle.trim() || undefined
+                );
 
                 if (response.success) {
                     setStatus('success');
