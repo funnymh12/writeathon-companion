@@ -236,167 +236,127 @@ const Memo: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col gap-4 p-4">
-            <div className="space-y-4">
-                {/* Space Selector */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        空间
-                    </label>
+
+        <div className="flex flex-col h-full bg-white relative">
+            {/* Top Bar: Space Selector */}
+            <div className="px-4 py-2 border-b border-gray-50 flex items-center justify-between bg-white z-10">
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <span className="opacity-70">存储到:</span>
                     <select
                         value={selectedSpace}
                         onChange={(e) => handleSpaceChange(e.target.value)}
                         disabled={loading}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="bg-transparent font-medium text-gray-700 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-2"
                     >
                         <option value="">默认空间</option>
                         {spaces.filter(s => s.title !== '默认空间').map((space) => {
                             const id = space._id || space.id;
+                            // Limit length for minimal look
+                            const title = space.title.length > 10 ? space.title.substring(0, 10) + '...' : space.title;
                             return (
                                 <option key={id} value={id}>
-                                    {space.title}
+                                    {title}
                                 </option>
                             );
                         })}
                     </select>
                 </div>
+                {/* Quick Actions (Paste) */}
+                {!quote && (
+                    <button
+                        onClick={pasteFromClipboard}
+                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-md transition-all flex items-center gap-1 text-[10px]"
+                        title="从剪贴板粘贴引用"
+                    >
+                        <Clipboard className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">引用</span>
+                    </button>
+                )}
+            </div>
 
-                {/* Title */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        标题（可选）
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="给卡片起个标题..."
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                </div>
+            {/* Main Scrollable Area */}
+            <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
+                <div className="space-y-4 min-h-full flex flex-col">
 
-                {/* Quote Section */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                            <Quote className="h-3 w-3" />
-                            原文引用（可选）
-                        </label>
-                        <button
-                            onClick={pasteFromClipboard}
-                            className="text-xs text-teal-500 hover:text-teal-600 flex items-center gap-1"
-                            title="从剪贴板粘贴"
-                        >
-                            <Clipboard className="h-3 w-3" />
-                            粘贴
-                        </button>
-                    </div>
-
-                    {quote ? (
-                        <div className="relative">
-                            <div className="p-3 bg-gray-50 border-l-4 border-gray-300 rounded-r-md text-sm text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
-                                {quote}
+                    {/* 1. Quote Block (Conditional) */}
+                    {quote && (
+                        <div className="relative group animate-in slide-in-from-top-2 fade-in duration-300">
+                            <div className="p-4 bg-gray-50/80 rounded-xl border border-gray-100 text-sm text-gray-600 leading-relaxed font-serif">
+                                <Quote className="h-4 w-4 text-gray-300 absolute top-4 left-4 -translate-x-1 -translate-y-1 opacity-50" />
+                                <div className="pl-6 relative z-10 whitespace-pre-wrap">
+                                    {quote}
+                                </div>
                             </div>
                             <button
                                 onClick={clearQuote}
-                                className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
-                                title="清除引用"
+                                className="absolute -top-2 -right-2 p-1.5 bg-white border border-gray-100 rounded-full shadow-sm text-gray-400 hover:text-red-500 hover:border-red-100 transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100"
+                                title="移除引用"
                             >
-                                <X className="h-3 w-3 text-gray-500" />
+                                <X className="h-3 w-3" />
                             </button>
                         </div>
-                    ) : (
-                        <textarea
-                            placeholder="粘贴或输入要引用的原文..."
-                            value={quote}
-                            onChange={(e) => setQuote(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            rows={2}
-                            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none text-gray-600"
-                        />
                     )}
 
-                    <p className="text-[10px] text-gray-400">
-                        💡 选中网页文字后打开侧边栏，将自动获取选中内容
-                    </p>
+                    {/* 2. Writing Area */}
+                    <div className="flex-1 flex flex-col space-y-4">
+                        <input
+                            type="text"
+                            placeholder="标题"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="w-full text-lg font-bold text-gray-800 placeholder:text-gray-300 border-none focus:ring-0 px-0 py-1 bg-transparent"
+                        />
+                        <textarea
+                            placeholder={quote ? "写下你的想法..." : "开始写作..."}
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="w-full flex-1 resize-none text-base leading-7 text-gray-700 placeholder:text-gray-300 border-none focus:ring-0 px-0 py-0 bg-transparent min-h-[200px]"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Toolbar */}
+            <div className="p-4 border-t border-gray-50 flex items-center justify-between bg-white z-20">
+                <div className="text-[10px] text-gray-300 flex items-center gap-2">
+                    {/* Status / Hints */}
+                    {status === 'error' ? (
+                        <span className="text-red-500">{error || '发送失败'}</span>
+                    ) : status === 'success' ? (
+                        <span className="text-green-600 flex items-center gap-1">
+                            <Check className="h-3 w-3" /> 发送成功
+                        </span>
+                    ) : (
+                        <span className="hidden sm:inline">
+                            {quickSendKey} 发送
+                        </span>
+                    )}
                 </div>
 
-                {/* Annotation/Content */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        {quote ? '批注' : '内容'}
-                    </label>
-                    <textarea
-                        placeholder={quote ? "写下你的批注、想法..." : "写点什么..."}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        rows={quote ? 4 : 8}
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none min-h-[100px]"
-                    />
-                </div>
-
-                {/* Preview */}
-                {(quote || content) && (
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            预览
-                        </label>
-                        <div className="p-3 bg-gray-50 rounded-md border border-gray-100 text-xs space-y-2 max-h-40 overflow-y-auto">
-                            {quote && (
-                                <div className="text-gray-600 border-l-2 border-gray-300 pl-2">
-                                    {quote.split('\n').map((line, i) => (
-                                        <div key={i}>&gt; {line}</div>
-                                    ))}
-                                </div>
-                            )}
-                            {quote && content && <div className="h-2"></div>}
-                            {content && (
-                                <div className="text-gray-800 whitespace-pre-wrap">{content}</div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                    <div className={`p-3 rounded-lg text-xs ${error.startsWith('✅')
-                        ? 'bg-green-50 border border-green-200 text-green-700'
-                        : 'bg-red-50 border border-red-200 text-red-700'}`}>
-                        {error}
-                    </div>
-                )}
-
-                {/* Send Button */}
                 <button
                     onClick={handleSend}
                     disabled={sending || (!content.trim() && !quote.trim())}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-colors ${status === 'success'
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-teal-500 hover:bg-teal-600 text-white'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm transition-all shadow-sm ${status === 'success'
+                        ? 'bg-green-600 text-white shadow-green-200'
+                        : 'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-200 hover:shadow-teal-300'
+                        } disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed`}
                 >
                     {sending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                     ) : status === 'success' ? (
                         <>
                             <Check className="h-4 w-4" />
-                            发送成功
+                            <span className="font-bold">已发送</span>
                         </>
                     ) : (
                         <>
                             <Send className="h-4 w-4" />
-                            {quote ? '发送批注卡片' : '发送到写拉松'}
+                            <span>发送</span>
                         </>
                     )}
                 </button>
-
-                {status === 'error' && !error && (
-                    <p className="text-xs text-red-600 text-center">
-                        发送失败，请重试
-                    </p>
-                )}
             </div>
         </div>
     );
