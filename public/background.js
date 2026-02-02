@@ -31,7 +31,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // 处理右键菜单点击
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     // 获取存储的认证信息
-    const stored = await chrome.storage.local.get(['token', 'userId', 'selectedSpaceId']);
+    const stored = await chrome.storage.local.get(['token', 'userId', 'selectedSpaceId', 'selectedSpaceName']);
 
     if (!stored.token || !stored.userId) {
         // 未认证，显示提示并打开侧边栏
@@ -41,7 +41,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         return;
     }
 
-    const { token, userId, selectedSpaceId } = stored;
+    const { token, userId, selectedSpaceId, selectedSpaceName } = stored;
+    const spaceNameDisplay = selectedSpaceName ? `(${selectedSpaceName})` : '';
     const pageUrl = tab?.url || '';
     const pageTitle = tab?.title || '未命名';
 
@@ -65,7 +66,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 }]
             });
 
-            showNotification(tab?.id, '发送成功', `已将选中文字保存到写拉松`);
+            showNotification(tab?.id, '发送成功', `已将选中文字保存到写拉松 ${spaceNameDisplay}`);
 
         } else if (info.menuItemId === 'save-image-to-writeathon') {
             // 保存图片
@@ -86,7 +87,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 }]
             });
 
-            showNotification(tab?.id, '保存成功', `已将图片保存到写拉松`);
+            showNotification(tab?.id, '保存成功', `已将图片保存到写拉松 ${spaceNameDisplay}`);
 
         } else if (info.menuItemId === 'save-link-to-writeathon') {
             // 保存链接
@@ -108,11 +109,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 }]
             });
 
-            showNotification(tab?.id, '保存成功', `已将链接保存到写拉松`);
+            showNotification(tab?.id, '保存成功', `已将链接保存到写拉松 ${spaceNameDisplay}`);
         }
     } catch (error) {
         console.error('保存失败:', error);
-        showNotification(tab?.id, '保存失败', error.message || '请检查网络连接和配置', true);
+        const code = error.errorCode ? `[${error.errorCode}] ` : '';
+        const spaceInfo = selectedSpaceName ? ` (${selectedSpaceName})` : '';
+        showNotification(tab?.id, '保存失败', `${code}${error.message || '未知错误'}${spaceInfo}`, true);
     }
 });
 
@@ -145,7 +148,9 @@ async function sendToWriteathon({ token, userId, spaceId, title, content, attach
     const data = await response.json();
 
     if (!data.success) {
-        throw new Error(data.message || 'API错误');
+        const error = new Error(data.message || 'API错误');
+        if (data.errorCode) error.errorCode = data.errorCode;
+        throw error;
     }
 
     return data;

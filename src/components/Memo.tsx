@@ -30,10 +30,12 @@ const Memo: React.FC = () => {
                 if (response.success && response.data) {
                     setSpaces(response.data);
                     // 如果有保存的空间选择，使用它
-                    if (data.selectedSpaceId && response.data.find(s => s.id === data.selectedSpaceId)) {
-                        setSelectedSpace(data.selectedSpaceId);
+                    const savedSpaceId = data.selectedSpaceId;
+                    if (savedSpaceId && response.data.find(s => (s._id || s.id) === savedSpaceId)) {
+                        setSelectedSpace(savedSpaceId);
                     } else if (response.data.length > 0) {
-                        setSelectedSpace(response.data[0].id);
+                        const first = response.data[0];
+                        setSelectedSpace(first._id || first.id);
                     }
                 }
             }
@@ -46,7 +48,7 @@ const Memo: React.FC = () => {
 
     const handleSpaceChange = async (spaceId: string) => {
         setSelectedSpace(spaceId);
-        const spaceName = spaces.find(s => s.id === spaceId)?.title || '默认空间';
+        const spaceName = spaces.find(s => (s._id || s.id) === spaceId)?.title || '默认空间';
         await storage.set({ selectedSpaceId: spaceId, selectedSpaceName: spaceName });
     };
 
@@ -185,11 +187,14 @@ const Memo: React.FC = () => {
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <option value="">默认空间</option>
-                        {spaces.map((space) => (
-                            <option key={space.id} value={space.id}>
-                                {space.title}
-                            </option>
-                        ))}
+                        {spaces.map((space) => {
+                            const id = space._id || space.id;
+                            return (
+                                <option key={id} value={id}>
+                                    {space.title}
+                                </option>
+                            );
+                        })}
                     </select>
                 </div>
 

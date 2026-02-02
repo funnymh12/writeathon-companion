@@ -293,7 +293,6 @@ const Clipper: React.FC = () => {
                         }
                     }
 
-                    console.log('Creating card with params:', params);
                     const response = await client.createCard(params);
 
                     if (!response.success) {
@@ -318,8 +317,8 @@ const Clipper: React.FC = () => {
         } catch (err: any) {
             setStatus('error');
             const code = err.errorCode ? `[${err.errorCode}] ` : '';
-            const spaceInfo = selectedSpace ? ` (SpaceID: ${selectedSpace})` : ' (No Space Default)';
-            setError(`DEBUG v1.1: ${code}${err.message || '保存失败'}${spaceInfo} - Raw: ${JSON.stringify(err)}`);
+            const spaceInfo = selectedSpace ? ` (SpaceID: ${selectedSpace})` : '';
+            setError(`${code}${err.message || '保存失败'}${spaceInfo}`);
         } finally {
             setSending(false);
         }
