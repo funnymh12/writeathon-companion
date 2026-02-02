@@ -13,6 +13,13 @@ chrome.runtime.onInstalled.addListener(() => {
         contexts: ['selection']
     });
 
+    // 选中文字保存为 Prompt
+    chrome.contextMenus.create({
+        id: 'save-as-prompt',
+        title: '保存为 Prompt',
+        contexts: ['selection']
+    });
+
     // 图片的菜单项
     chrome.contextMenus.create({
         id: 'save-image-to-writeathon',
@@ -110,6 +117,37 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             });
 
             showNotification(tab?.id, '保存成功', `已将链接保存到写拉松 ${spaceNameDisplay}`);
+
+        } else if (info.menuItemId === 'save-as-prompt') {
+            // 保存为 Prompt
+            const selectedText = info.selectionText;
+            if (!selectedText) return;
+
+            // 获取 Prompt 空间 ID
+            const promptData = await chrome.storage.local.get(['promptSpaceId']);
+            const promptSpaceId = promptData.promptSpaceId;
+
+            if (!promptSpaceId) {
+                // 未设置 Prompt 空间，提示用户
+                showNotification(tab?.id, '未设置 Prompt 空间', '请先在插件设置中选择 Prompt 存储空间', true);
+                if (tab?.id) {
+                    await chrome.sidePanel.open({ tabId: tab.id });
+                }
+                return;
+            }
+
+            // 生成 Prompt 标题（取前20个字符）
+            const promptTitle = selectedText.substring(0, 30).replace(/\n/g, ' ').trim() + (selectedText.length > 30 ? '...' : '');
+
+            await sendToWriteathon({
+                token,
+                userId,
+                spaceId: promptSpaceId,
+                title: promptTitle,
+                content: selectedText + `\n\n> 来源: [${pageTitle}](${pageUrl})`
+            });
+
+            showNotification(tab?.id, '保存成功', '已保存为 Prompt');
         }
     } catch (error) {
         console.error('保存失败:', error);

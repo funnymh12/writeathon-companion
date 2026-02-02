@@ -4,9 +4,10 @@ import Settings from './components/Settings';
 import Memo from './components/Memo';
 import Recent from './components/Recent';
 import Clipper from './components/Clipper';
-import { Settings as SettingsIcon, LayoutGrid, PenLine, Paperclip } from 'lucide-react';
+import Prompt from './components/Prompt';
+import { Settings as SettingsIcon, LayoutGrid, PenLine, Paperclip, Sparkles } from 'lucide-react';
 
-type Tab = 'memo' | 'recent' | 'clip' | 'settings';
+type Tab = 'memo' | 'recent' | 'clip' | 'prompt' | 'settings';
 
 function App() {
     const [isAuth, setIsAuth] = useState<boolean | null>(null);
@@ -26,7 +27,10 @@ function App() {
             const shortcuts = data.shortcuts || {
                 toggleMemo: 'Alt+1',
                 toggleRecent: 'Alt+2',
-                toggleClip: 'Alt+3'
+                toggleClip: 'Alt+3',
+                togglePrompt: 'Alt+4',
+                quickSend: 'Ctrl+Enter',
+                globalClip: 'Alt+Shift+S'
             };
 
             const getKeyString = (ev: KeyboardEvent) => {
@@ -54,6 +58,8 @@ function App() {
                 setActiveTab('recent');
             } else if (pressed === shortcuts.toggleClip) {
                 setActiveTab('clip');
+            } else if (pressed === shortcuts.togglePrompt) {
+                setActiveTab('prompt');
             }
         };
 
@@ -91,6 +97,8 @@ function App() {
                 return <Recent />;
             case 'clip':
                 return <Clipper />;
+            case 'prompt':
+                return <Prompt />;
             case 'settings':
                 return (
                     <Settings
@@ -146,7 +154,7 @@ function App() {
                 <nav className="flex h-16 border-t bg-white items-center justify-around px-2 shrink-0">
                     <button
                         onClick={() => setActiveTab('memo')}
-                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-4 rounded-lg ${activeTab === 'memo' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
+                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-3 rounded-lg ${activeTab === 'memo' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
                     >
                         <PenLine className="h-5 w-5" />
                         <span className="text-[10px] font-medium">速记</span>
@@ -154,7 +162,7 @@ function App() {
 
                     <button
                         onClick={() => setActiveTab('recent')}
-                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-4 rounded-lg ${activeTab === 'recent' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
+                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-3 rounded-lg ${activeTab === 'recent' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
                     >
                         <LayoutGrid className="h-5 w-5" />
                         <span className="text-[10px] font-medium">最近</span>
@@ -162,10 +170,18 @@ function App() {
 
                     <button
                         onClick={() => setActiveTab('clip')}
-                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-4 rounded-lg ${activeTab === 'clip' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
+                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-3 rounded-lg ${activeTab === 'clip' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
                     >
                         <Paperclip className="h-5 w-5" />
                         <span className="text-[10px] font-medium">剪藏</span>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('prompt')}
+                        className={`flex flex-col items-center gap-1 transition-colors py-2 px-3 rounded-lg ${activeTab === 'prompt' ? 'text-teal-500' : 'text-gray-400 hover:text-teal-400'}`}
+                    >
+                        <Sparkles className="h-5 w-5" />
+                        <span className="text-[10px] font-medium">Prompt</span>
                     </button>
                 </nav>
             )}

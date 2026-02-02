@@ -5,10 +5,15 @@ export interface AppStorage {
     selectedSpaceId?: string;
     selectedSpaceName?: string;
     imgbbApiKey?: string; // For image hosting
+    // Prompt 管理相关
+    promptSpaceId?: string;
+    pinnedPrompts?: string[];
+    recentUsedPrompts?: { id: string; timestamp: number }[];
     shortcuts?: {
         toggleMemo: string;
         toggleRecent: string;
         toggleClip: string;
+        togglePrompt: string;
         quickSend: string;
         globalClip: string;
     };
@@ -17,7 +22,10 @@ export interface AppStorage {
 export const storage = {
     get: async (): Promise<AppStorage> => {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName', 'imgbbApiKey', 'shortcuts'], (result) => {
+            chrome.storage.local.get([
+                'token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName',
+                'imgbbApiKey', 'shortcuts', 'promptSpaceId', 'pinnedPrompts', 'recentUsedPrompts'
+            ], (result) => {
                 resolve(result);
             });
         });

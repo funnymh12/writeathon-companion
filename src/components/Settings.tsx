@@ -7,6 +7,7 @@ interface Shortcuts {
     toggleMemo: string;
     toggleRecent: string;
     toggleClip: string;
+    togglePrompt: string;
     quickSend: string;
     globalClip: string;
 }
@@ -15,6 +16,7 @@ const DEFAULT_SHORTCUTS: Shortcuts = {
     toggleMemo: 'Alt+1',
     toggleRecent: 'Alt+2',
     toggleClip: 'Alt+3',
+    togglePrompt: 'Alt+4',
     quickSend: 'Ctrl+Enter',
     globalClip: 'Alt+S'
 };
@@ -239,6 +241,7 @@ const Settings: React.FC<SettingsProps> = ({ onSuccess, onBack, isAuthenticated 
                         <ShortcutInput label="切换到速记" value={shortcuts.toggleMemo} shortcutKey="toggleMemo" />
                         <ShortcutInput label="切换到最近" value={shortcuts.toggleRecent} shortcutKey="toggleRecent" />
                         <ShortcutInput label="切换到剪藏" value={shortcuts.toggleClip} shortcutKey="toggleClip" />
+                        <ShortcutInput label="切换到Prompt" value={shortcuts.togglePrompt} shortcutKey="togglePrompt" />
 
                         <div className="h-px bg-gray-50 my-2"></div>
 
