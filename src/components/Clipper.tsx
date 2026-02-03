@@ -232,11 +232,8 @@ const Clipper: React.FC = () => {
                     const parentId = res.data?.id || res.data?._id;
                     if (parentId) {
                         for (let i = 1; i < chunks.length; i++) {
-                            await client.createCard({
-                                title: `${title} (${i + 1})`,
-                                content: chunks[i],
-                                space: selectedSpace || undefined
-                            });
+                            // Use extendCard to append to the parent card
+                            await client.extendCard(parentId, chunks[i], `${title} (${i + 1})`);
                         }
                     }
                 }
