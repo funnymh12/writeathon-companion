@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
-import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles } from 'lucide-react';
+import { handlePasteImage } from '../utils/imageUtils';
+import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles, Image as ImageIcon } from 'lucide-react';
 
 const Memo: React.FC = () => {
     const [spaces, setSpaces] = useState<Space[]>([]);
@@ -11,10 +12,15 @@ const Memo: React.FC = () => {
     const [quote, setQuote] = useState(''); // 原文/引用
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [error, setError] = useState('');
 
     const [quickSendKey, setQuickSendKey] = useState('Ctrl+Enter');
+
+    // Refs for auto-resizing
+    const contentRef = useRef<HTMLTextAreaElement>(null);
+    const quoteRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         fetchSpaces();
@@ -27,6 +33,24 @@ const Memo: React.FC = () => {
             }
         });
     }, []);
+
+    // Auto-resize Quote
+    useEffect(() => {
+        if (quoteRef.current) {
+            quoteRef.current.style.height = 'auto'; // Reset
+            quoteRef.current.style.height = `${quoteRef.current.scrollHeight}px`;
+        }
+    }, [quote]);
+
+    // Auto-resize Content
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.style.height = 'auto'; // Reset
+            // Min height of ~200px
+            const scrollHeight = Math.max(contentRef.current.scrollHeight, 200);
+            contentRef.current.style.height = `${scrollHeight}px`;
+        }
+    }, [content]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         const getKeyString = (ev: React.KeyboardEvent) => {
@@ -129,10 +153,10 @@ const Memo: React.FC = () => {
 
     const pasteFromClipboard = async () => {
         try {
-            // Clear current quote first
-            setQuote('');
+            // Check permissions first? Usually handled by manifest
+            setQuote(''); // Clear current quote
 
-            // Try to read from clipboard
+            // Try to read from clipboard API
             if (navigator.clipboard && navigator.clipboard.readText) {
                 const text = await navigator.clipboard.readText();
                 if (text && text.trim()) {
@@ -141,28 +165,56 @@ const Memo: React.FC = () => {
                 }
             }
 
-            // Fallback: execute script in active tab to get clipboard
+            // Fallback
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab?.id && !tab.url?.startsWith('chrome://')) {
                 const results = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     func: async () => {
-                        try {
-                            return await navigator.clipboard.readText();
-                        } catch {
-                            return '';
-                        }
+                        try { return await navigator.clipboard.readText(); } catch { return ''; }
                     }
                 });
                 const clipText = results[0]?.result;
-                if (clipText && clipText.trim()) {
-                    setQuote(clipText.trim());
-                }
+                if (clipText && clipText.trim()) setQuote(clipText.trim());
             }
         } catch (err) {
             console.error('读取剪贴板失败', err);
             setError('读取剪贴板失败，请手动粘贴');
             setTimeout(() => setError(''), 3000);
+        }
+    };
+
+    const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        // Handle image paste logic
+        const handled = await handlePasteImage(
+            e as any, // Cast to match generic clipboard event
+            () => {
+                setUploadingImage(true);
+                // Insert placeholder
+                const textarea = e.currentTarget;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const placeholder = '![Uploading image...]()';
+                const newContent = content.substring(0, start) + placeholder + content.substring(end);
+                setContent(newContent);
+                // Move cursor after placeholder (simplified, might need better logic)
+            },
+            (url) => {
+                setUploadingImage(false);
+                // Replace placeholder with actual URL
+                setContent((prev) => prev.replace('![Uploading image...]()', `![](${url})`));
+            },
+            (errMsg) => {
+                setUploadingImage(false);
+                setError(`图片上传失败: ${errMsg}`);
+                // Remove placeholder
+                setContent((prev) => prev.replace('![Uploading image...]()', ''));
+                setTimeout(() => setError(''), 3000);
+            }
+        );
+
+        if (!handled) {
+            // Normal paste behavior continues automatically
         }
     };
 
@@ -236,7 +288,6 @@ const Memo: React.FC = () => {
     };
 
     return (
-
         <div className="flex flex-col h-full bg-white relative">
             {/* Top Bar: Space Selector */}
             <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between bg-white/80 backdrop-blur-sm z-10 sticky top-0">
@@ -279,20 +330,24 @@ const Memo: React.FC = () => {
 
             {/* Main Scrollable Area */}
             <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-100">
-                <div className="space-y-6 min-h-full flex flex-col">
+                <div className="space-y-6 min-h-full flex flex-col pb-20"> {/* pb-20 for safe scroll */}
 
-                    {/* 1. Quote Block (Conditional) */}
+                    {/* 1. Quote Block (Editable) */}
                     {quote && (
                         <div className="relative group animate-in slide-in-from-top-2 fade-in duration-300">
-                            <div className="p-5 bg-gradient-to-br from-indigo-50/50 to-purple-50/30 rounded-2xl border border-indigo-100/50 text-sm text-gray-600 leading-relaxed font-serif shadow-sm">
-                                <Quote className="h-4 w-4 text-indigo-200 absolute top-4 left-4" />
-                                <div className="pl-6 relative z-10 whitespace-pre-wrap">
-                                    {quote}
-                                </div>
+                            <div className="p-1 bg-gradient-to-br from-indigo-50/50 to-purple-50/30 rounded-2xl border border-indigo-100/50 shadow-sm relative">
+                                <Quote className="h-4 w-4 text-indigo-300 absolute top-4 left-4 z-0 pointer-events-none" />
+                                <textarea
+                                    ref={quoteRef}
+                                    value={quote}
+                                    onChange={(e) => setQuote(e.target.value)}
+                                    className="w-full bg-transparent border-none text-sm text-gray-600 leading-relaxed font-serif pl-10 pr-8 py-3 resize-none focus:ring-0 focus:outline-none placeholder-gray-400/50 min-h-[60px]"
+                                    placeholder="引用内容..."
+                                />
                             </div>
                             <button
                                 onClick={clearQuote}
-                                className="absolute -top-2 -right-2 p-1.5 bg-white border border-gray-100 rounded-full shadow-sm text-gray-400 hover:text-red-500 hover:border-red-100 transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100"
+                                className="absolute -top-2 -right-2 p-1.5 bg-white border border-gray-100 rounded-full shadow-sm text-gray-400 hover:text-red-500 hover:border-red-100 transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100 z-10"
                                 title="移除引用"
                             >
                                 <X className="h-3 w-3" />
@@ -301,28 +356,39 @@ const Memo: React.FC = () => {
                     )}
 
                     {/* 2. Writing Area */}
-                    <div className="flex-1 flex flex-col space-y-4">
+                    <div className="flex-1 flex flex-col space-y-2">
                         <input
                             type="text"
                             placeholder="无标题"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="w-full text-xl font-bold text-gray-900 placeholder:text-gray-300 border-none focus:ring-0 px-0 bg-transparent tracking-tight"
+                            className="w-full text-xl font-bold text-gray-900 placeholder:text-gray-300 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
                         />
-                        <textarea
-                            placeholder={quote ? "写下你的想法..." : "捕捉当下的灵感..."}
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="w-full flex-1 resize-none text-base leading-7 text-gray-700 placeholder:text-gray-300/70 border-none focus:ring-0 px-0 py-0 bg-transparent min-h-[200px]"
-                        />
+                        <div className="relative">
+                            <textarea
+                                ref={contentRef}
+                                placeholder={quote ? "写下你的想法..." : "捕捉当下的灵感... (支持粘贴图片)"}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                onPaste={handlePaste}
+                                onKeyDown={handleKeyDown}
+                                className="w-full resize-none text-base leading-7 text-gray-700 placeholder:text-gray-300/70 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
+                                style={{ minHeight: '200px' }}
+                            />
+                            {uploadingImage && (
+                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur rounded-lg px-2 py-1 flex items-center gap-1.5 text-white text-[10px] animate-pulse">
+                                    <ImageIcon className="h-3 w-3" />
+                                    <span>上传图片中...</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 border-t border-gray-50 flex items-center justify-between bg-white z-20">
+            <div className="px-5 py-4 border-t border-gray-50 flex items-center justify-between bg-white z-20 sticky bottom-0">
                 <div className="text-[10px] text-gray-400 flex items-center gap-2">
                     {/* Status / Hints */}
                     {status === 'error' ? (
@@ -342,18 +408,9 @@ const Memo: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3">
-                    {/* Potentially other tools here like AI helper */}
-                    <button
-                        onClick={() => { /* AI Expand? Future feature */ }}
-                        className="p-2 text-gray-400 hover:text-purple-500 hover:bg-purple-50 rounded-full transition-colors hidden sm:block"
-                        title="AI 润色 (Coming Soon)"
-                    >
-                        <Sparkles className="h-4 w-4" />
-                    </button>
-
                     <button
                         onClick={handleSend}
-                        disabled={sending || (!content.trim() && !quote.trim())}
+                        disabled={sending || uploadingImage || (!content.trim() && !quote.trim())}
                         className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed ${status === 'success'
                             ? 'bg-green-500 text-white'
                             : 'bg-teal-500 hover:bg-teal-600 text-white shadow-teal-500/30'

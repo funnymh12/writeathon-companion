@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "写拉松小助手",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "写拉松小助手 - 支持速记、剪藏、卡片扩展的侧边栏助手",
     "permissions": [
         "sidePanel",
