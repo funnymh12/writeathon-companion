@@ -38,18 +38,14 @@ const Clipper: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        handleRefresh();
-    }, [mode]);
+        fetchSpaces();
+        getCurrentTab();
+        // Default to loading page content
+        scrapePageContent();
+    }, []);
 
-    const handleRefresh = () => {
-        if (mode === 'image') {
-            scrapeImages();
-        } else if (mode === 'page') {
-            scrapePageContent();
-        } else if (mode === 'link') {
-            scrapeLinkInfo();
-        }
-    };
+    // Effect for mode change handling moved to bottom or we call specific functions directly in callbacks?
+    // Let's redefine handleRefresh after scrape functions and use another useEffect there.
 
     const fetchSpaces = async () => {
         try {
@@ -78,6 +74,41 @@ const Clipper: React.FC = () => {
         await storage.set({ selectedSpaceId: spaceId, selectedSpaceName: spaceName });
     };
 
+    // Helpers
+    const isLikelyHotlinked = (url: string) => {
+        return url.includes('wx_fmt=') || url.includes('wxfrom=') || url.includes('tp=webp');
+    };
+
+    const fetchImageAsBase64 = async (url: string) => {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const checkImageAccessible = async (url: string) => {
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    };
+
+    const toggleImageSelection = (src: string) => {
+        const newSet = new Set(selectedImages);
+        if (newSet.has(src)) {
+            newSet.delete(src);
+        } else {
+            newSet.add(src);
+        }
+        setSelectedImages(newSet);
+    };
+
     const getCurrentTab = async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab && tab.url && tab.title) {
@@ -98,16 +129,78 @@ const Clipper: React.FC = () => {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    const clone = document.cloneNode(true) as Document;
-                    const selection = window.getSelection();
-                    if (selection && selection.toString().trim()) {
-                        return selection.toString().trim();
-                    }
+                    // Simple DOM to Markdown Converter ensuring images are preserved
+                    const cleanNode = (node: Node): string => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            return node.textContent || '';
+                        }
+                        if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
-                    // Fallback to extraction (simplified)
-                    clone.querySelectorAll('script, style, nav, footer, iframe, header, aside').forEach(e => e.remove());
-                    const article = clone.querySelector('article') || clone.querySelector('main') || clone.querySelector('.content') || clone.body;
-                    return article.innerText.substring(0, 5000);
+                        const el = node as HTMLElement;
+                        const tagName = el.tagName.toLowerCase();
+
+                        // Hidden elements
+                        if (getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return '';
+                        // Skip scripts/styles/nav/etc
+                        if (['script', 'style', 'nav', 'footer', 'header', 'aside', 'noscript', 'iframe', 'svg'].includes(tagName)) return '';
+
+                        let childrenText = '';
+                        el.childNodes.forEach(child => {
+                            childrenText += cleanNode(child);
+                        });
+
+                        switch (tagName) {
+                            case 'h1': return `\n# ${childrenText}\n\n`;
+                            case 'h2': return `\n## ${childrenText}\n\n`;
+                            case 'h3': return `\n### ${childrenText}\n\n`;
+                            case 'h4': return `\n#### ${childrenText}\n\n`;
+                            case 'h5': return `\n##### ${childrenText}\n\n`;
+                            case 'h6': return `\n###### ${childrenText}\n\n`;
+                            case 'p': return `\n${childrenText}\n\n`;
+                            case 'br': return '\n';
+                            case 'hr': return '\n---\n';
+                            case 'blockquote': return `\n> ${childrenText}\n\n`;
+                            case 'code': return `\`${childrenText}\``;
+                            case 'pre': return `\n\`\`\`\n${childrenText}\n\`\`\`\n\n`;
+                            case 'strong':
+                            case 'b': return `**${childrenText}**`;
+                            case 'em':
+                            case 'i': return `*${childrenText}*`;
+                            case 'a': {
+                                const href = el.getAttribute('href');
+                                if (!href || href.startsWith('javascript:')) return childrenText;
+                                return `[${childrenText}](${href})`;
+                            }
+                            case 'img': {
+                                const src = el.getAttribute('src');
+                                // Use data-src if src is missing/placeholder (common in lazy load)
+                                const realSrc = src || el.getAttribute('data-src') || el.getAttribute('data-original');
+                                if (!realSrc || realSrc.startsWith('data:')) return '';
+                                const alt = el.getAttribute('alt') || '';
+                                return `![${alt}](${realSrc})`;
+                            }
+                            case 'ul': return `\n${childrenText}\n`;
+                            case 'ol': return `\n${childrenText}\n`;
+                            case 'li': return `- ${childrenText}\n`;
+                            case 'div':
+                            case 'section':
+                            case 'article':
+                            case 'main':
+                                return `\n${childrenText}\n`;
+                            default: return childrenText;
+                        }
+                    };
+
+                    // Try to find the main content
+                    let root: HTMLElement = document.body;
+                    const article = document.querySelector('article');
+                    const main = document.querySelector('main');
+                    const content = document.querySelector('.content') || document.querySelector('.post-content') || document.querySelector('#content');
+                    if (article) root = article;
+                    else if (main) root = main;
+                    else if (content) root = content as HTMLElement;
+
+                    return cleanNode(root).replace(/\n{3,}/g, '\n\n').trim();
                 }
             });
 
@@ -123,7 +216,7 @@ const Clipper: React.FC = () => {
 
     const scrapeLinkInfo = async () => {
         await getCurrentTab();
-        setContent('');
+        setContent(''); // Link mode, content starts empty mostly
     };
 
     const scrapeImages = async () => {
@@ -158,42 +251,83 @@ const Clipper: React.FC = () => {
         }
     };
 
-    const toggleImageSelection = (src: string) => {
-        const newSet = new Set(selectedImages);
-        if (newSet.has(src)) {
-            newSet.delete(src);
-        } else {
-            newSet.add(src);
-        }
-        setSelectedImages(newSet);
-    };
-
-    const isLikelyHotlinked = (url: string) => {
-        return url.includes('wx_fmt=') || url.includes('wxfrom=') || url.includes('tp=webp');
-    };
-
-    // uploadToImgbb is now imported from utils/imageUtils
-
-    const fetchImageAsBase64 = async (url: string) => {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    };
-
-    const checkImageAccessible = async (url: string) => {
-        try {
-            const res = await fetch(url, { method: 'HEAD' });
-            return res.ok;
-        } catch {
-            return false;
+    // Handle Refresh
+    const handleRefresh = () => {
+        if (mode === 'image') {
+            scrapeImages();
+        } else if (mode === 'page') {
+            scrapePageContent();
+        } else if (mode === 'link') {
+            scrapeLinkInfo();
         }
     };
 
+    // Auto-refresh on mode change
+    useEffect(() => {
+        handleRefresh();
+    }, [mode]);
+
+    const processContentImages = async (markdown: string): Promise<string> => {
+        // Find all images ![alt](url)
+        const regex = /!\[(.*?)\]\((.*?)\)/g;
+        let match;
+        const replacements: { original: string, newUrl: string }[] = [];
+        const matches = [];
+
+        // Collect all matches
+        while ((match = regex.exec(markdown)) !== null) {
+            matches.push({ full: match[0], alt: match[1], url: match[2] });
+        }
+
+        // Process sequentially (or concurrent with limit)
+        for (const m of matches) {
+            const { url } = m;
+            if (!url || url.startsWith('http') === false) continue;
+
+            const needsProxy = isLikelyHotlinked(url) || !(await checkImageAccessible(url));
+            if (needsProxy) {
+                try {
+                    const base64 = await fetchImageAsBase64(url);
+                    const newUrl = await uploadImage(base64);
+                    replacements.push({ original: url, newUrl });
+                } catch (e) {
+                    console.warn(`Failed to process image ${url}`, e);
+                }
+            }
+        }
+
+        let newMarkdown = markdown;
+        for (const rep of replacements) {
+            // Replace globally in case same image used twice
+            newMarkdown = newMarkdown.split(rep.original).join(rep.newUrl);
+        }
+        return newMarkdown;
+    };
+
+    const smartSplit = (text: string, limit: number = 4000): string[] => {
+        if (text.length <= limit) return [text];
+
+        const chunks = [];
+        let remaining = text;
+
+        while (remaining.length > 0) {
+            if (remaining.length <= limit) {
+                chunks.push(remaining);
+                break;
+            }
+
+            // Find a good breaking point before the limit
+            // Try: Double newline (Paragraph) -> Newline -> Space -> Absolute limit
+            let breakPoint = remaining.lastIndexOf('\n\n', limit);
+            if (breakPoint === -1) breakPoint = remaining.lastIndexOf('\n', limit);
+            if (breakPoint === -1) breakPoint = remaining.lastIndexOf(' ', limit);
+            if (breakPoint === -1) breakPoint = limit; // Force split
+
+            chunks.push(remaining.substring(0, breakPoint));
+            remaining = remaining.substring(breakPoint).trim(); // Remove leading whitespace for next chunk
+        }
+        return chunks;
+    };
 
     const handleSave = async () => {
         setStatus('loading');
@@ -209,89 +343,79 @@ const Clipper: React.FC = () => {
 
             const client = new WriteathonClient(data.token, data.userId);
 
-            if (mode === 'page') {
-                const MAX_CHUNK = 4000;
-                const chunks = [];
-                let remain = content;
-                while (remain.length > 0) {
-                    chunks.push(remain.substring(0, MAX_CHUNK));
-                    remain = remain.substring(MAX_CHUNK);
-                }
+            if (mode === 'page' || mode === 'link') {
+                setMessage('正在处理图片...');
+                // 1. Process Images
+                const finalContent = await processContentImages(content);
 
-                let firstBody = chunks[0] + `\n\n> 来源: [${title}](${url})`;
+                // 2. Split
+                setMessage('正在保存...');
+                const chunks = smartSplit(finalContent, 4000);
+
+                // 3. Create First Card
+                let firstChunk = chunks[0];
+                if (mode === 'link') firstChunk = `> [${title}](${url})\n\n` + firstChunk;
+                if (mode === 'page') firstChunk = firstChunk + `\n\n> 来源: [${title}](${url})`;
 
                 const res = await client.createCard({
-                    title: title,
-                    content: firstBody,
+                    title: mode === 'link' ? `收藏链接: ${title}` : title,
+                    content: firstChunk,
                     space: selectedSpace || undefined
                 });
 
                 if (!res.success) throw new Error(res.message);
 
+                // 4. Threading
                 if (chunks.length > 1) {
                     const parentId = res.data?.id || res.data?._id;
                     if (parentId) {
                         for (let i = 1; i < chunks.length; i++) {
-                            // Use extendCard to append to the parent card
+                            setMessage(`正在追加第 ${i + 1}/${chunks.length} 部分...`);
                             await client.extendCard(parentId, chunks[i], `${title} (${i + 1})`);
                         }
                     }
                 }
 
-            } else if (mode === 'link') {
-                const linkContent = `> [${title}](${url})\n\n${content}`;
-                const res = await client.createCard({
-                    title: '收藏链接: ' + title,
-                    content: linkContent,
-                    space: selectedSpace || undefined
-                });
-                if (!res.success) throw new Error(res.message);
-
             } else if (mode === 'image') {
-                if (selectedImages.size === 0) {
-                    throw new Error('请至少选择一张图片');
-                }
+                // ... (existing image logic is fine, it uses the same uploadImage util) ...
+                if (selectedImages.size === 0) throw new Error('请至少选择一张图片');
 
                 let processedImagesMd = '';
-                // No longer needed here as utils handles default key if missing, but we can pass null or let utility handle it.
-                // The utility reads storage itself. But here we might want to iterate. 
-                // Wait, utility uploadToImgbb does read storage.
-
                 let successCount = 0;
+
+                // Process selected images (upload if needed)
                 for (const src of Array.from(selectedImages)) {
+                    setMessage(`正在处理图片 ${successCount + 1}/${selectedImages.size}...`);
                     try {
                         let finalSrc = src;
                         const needsProxy = isLikelyHotlinked(src) || !(await checkImageAccessible(src));
-
                         if (needsProxy) {
                             try {
                                 const base64 = await fetchImageAsBase64(src);
-                                // Use imported utility
                                 finalSrc = await uploadImage(base64);
                             } catch (e) {
-                                console.warn('ImgBB upload failed, falling back to original', e);
+                                console.warn('Image upload failed', e);
                             }
                         }
-
                         processedImagesMd += `![](${finalSrc})\n\n`;
                         successCount++;
                     } catch (e) {
-                        console.error('Image process failed', e);
+                        console.error('Image loop error', e);
                     }
                 }
 
-                if (successCount === 0) throw new Error('图片处理失败');
+                if (successCount === 0) throw new Error('没有图片能被保存');
 
                 const res = await client.createCard({
                     title: `图片收藏: ${title}`,
                     content: processedImagesMd + `> 来源: [${title}](${url})`,
                     space: selectedSpace || undefined
                 });
-
                 if (!res.success) throw new Error(res.message);
             }
 
             setStatus('success');
+            setMessage('');
             setTimeout(() => setStatus('idle'), 3000);
 
         } catch (err: any) {
