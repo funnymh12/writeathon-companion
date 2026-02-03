@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
-import { uploadToImgbb as uploadToImgbbUtil } from '../utils/imageUtils';
+import { uploadImage } from '../utils/imageUtils';
 import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X, RotateCw } from 'lucide-react';
 
 type ClipMode = 'page' | 'link' | 'image';
@@ -270,7 +270,7 @@ const Clipper: React.FC = () => {
                             try {
                                 const base64 = await fetchImageAsBase64(src);
                                 // Use imported utility
-                                finalSrc = await uploadToImgbbUtil(base64);
+                                finalSrc = await uploadImage(base64);
                             } catch (e) {
                                 console.warn('ImgBB upload failed, falling back to original', e);
                             }

@@ -13,7 +13,14 @@ const Settings: React.FC = () => {
     const [aiBaseUrl, setAiBaseUrl] = useState('');
     const [aiModel, setAiModel] = useState('gemini-2.0-flash-exp');
 
+    // Image Config
+    const [imageProvider, setImageProvider] = useState<'imgbb' | 'qiniu'>('imgbb');
     const [imgbbApiKey, setImgbbApiKey] = useState('');
+    const [qiniuAk, setQiniuAk] = useState('');
+    const [qiniuSk, setQiniuSk] = useState('');
+    const [qiniuBucket, setQiniuBucket] = useState('');
+    const [qiniuDomain, setQiniuDomain] = useState('');
+    const [qiniuRegion, setQiniuRegion] = useState('z0');
 
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<string>('');
@@ -37,7 +44,23 @@ const Settings: React.FC = () => {
             setAiModel(data.aiConfig.model || 'gemini-2.0-flash-exp');
         }
 
-        if (data.imgbbApiKey) setImgbbApiKey(data.imgbbApiKey);
+        if (data.imageConfig) {
+            setImageProvider(data.imageConfig.provider || 'imgbb');
+            if (data.imageConfig.imgbb) {
+                setImgbbApiKey(data.imageConfig.imgbb.apiKey || '');
+            }
+            if (data.imageConfig.qiniu) {
+                setQiniuAk(data.imageConfig.qiniu.accessKey || '');
+                setQiniuSk(data.imageConfig.qiniu.secretKey || '');
+                setQiniuBucket(data.imageConfig.qiniu.bucket || '');
+                setQiniuDomain(data.imageConfig.qiniu.domain || '');
+                setQiniuRegion(data.imageConfig.qiniu.region || 'z0');
+            }
+        } else if (data.imgbbApiKey) {
+            // Migration
+            setImageProvider('imgbb');
+            setImgbbApiKey(data.imgbbApiKey);
+        }
     };
 
     const handleSave = async () => {
@@ -54,11 +77,25 @@ const Settings: React.FC = () => {
                 model: aiModel
             };
 
+            // 3. Save Image Config
+            const imageConfig = {
+                provider: imageProvider,
+                imgbb: { apiKey: imgbbApiKey },
+                qiniu: {
+                    accessKey: qiniuAk,
+                    secretKey: qiniuSk,
+                    bucket: qiniuBucket,
+                    domain: qiniuDomain,
+                    region: qiniuRegion
+                }
+            };
+
             await storage.set({
                 token,
                 baseUrl,
                 aiConfig,
-                imgbbApiKey
+                imageConfig,
+                imgbbApiKey // Keep strictly for rollback/compatibility if needed, but primary is imageConfig
             });
 
             setStatus('success');
@@ -164,8 +201,8 @@ const Settings: React.FC = () => {
                                     key={p}
                                     onClick={() => setAiProvider(p as any)}
                                     className={`py-2 text-xs font-bold rounded-lg transition-all capitalize ${aiProvider === p
-                                            ? 'bg-white text-indigo-600 shadow-sm'
-                                            : 'text-gray-400 hover:text-gray-600'
+                                        ? 'bg-white text-indigo-600 shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600'
                                         }`}
                                 >
                                     {p}
@@ -228,26 +265,102 @@ const Settings: React.FC = () => {
                     </div>
                 </section>
 
-                {/* 3. Image Hosting (ImgBB) */}
+                {/* 3. Image Hosting */}
                 <section className="space-y-4">
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                        <SettingsIcon className="h-3.5 w-3.5" /> 图片服务
+                        <User className="h-3.5 w-3.5" /> 图片服务
                     </h3>
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700 flex justify-between">
-                                ImgBB API Key
-                                <a href="https://api.imgbb.com/" target="_blank" className="text-xs text-teal-600 hover:underline font-normal">获取 Key</a>
-                            </label>
-                            <input
-                                type="password"
-                                value={imgbbApiKey}
-                                onChange={(e) => setImgbbApiKey(e.target.value)}
-                                placeholder="用于绕过图片防盗链 (可选)"
-                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
-                            />
-                            <p className="text-[10px] text-gray-400">如果不填，将使用默认 Key（可能会有额度限制）</p>
+                        <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 rounded-xl mb-4">
+                            {(['imgbb', 'qiniu'] as const).map((p) => (
+                                <button
+                                    key={p}
+                                    onClick={() => setImageProvider(p)}
+                                    className={`py-2 text-xs font-bold rounded-lg transition-all capitalize ${imageProvider === p
+                                        ? 'bg-white text-teal-600 shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600'
+                                        }`}
+                                >
+                                    {p === 'imgbb' ? 'ImgBB' : '七牛云'}
+                                </button>
+                            ))}
                         </div>
+
+                        {imageProvider === 'imgbb' ? (
+                            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
+                                <label className="text-sm font-medium text-gray-700 flex justify-between">
+                                    ImgBB API Key
+                                    <a href="https://api.imgbb.com/" target="_blank" className="text-xs text-teal-600 hover:underline font-normal">获取 Key</a>
+                                </label>
+                                <input
+                                    type="password"
+                                    value={imgbbApiKey}
+                                    onChange={(e) => setImgbbApiKey(e.target.value)}
+                                    placeholder="用于绕过图片防盗链 (可选)"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                />
+                                <p className="text-[10px] text-gray-400">如果不填，将使用默认 Key（可能会有额度限制）</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-top-1">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-gray-700">Access Key (AK)</label>
+                                    <input
+                                        type="password"
+                                        value={qiniuAk}
+                                        onChange={(e) => setQiniuAk(e.target.value)}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-gray-700">Secret Key (SK)</label>
+                                    <input
+                                        type="password"
+                                        value={qiniuSk}
+                                        onChange={(e) => setQiniuSk(e.target.value)}
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-gray-700">Bucket Name</label>
+                                        <input
+                                            type="text"
+                                            value={qiniuBucket}
+                                            onChange={(e) => setQiniuBucket(e.target.value)}
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-gray-700">Region</label>
+                                        <div className="relative">
+                                            <select
+                                                value={qiniuRegion}
+                                                onChange={(e) => setQiniuRegion(e.target.value)}
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-gray-700 appearance-none cursor-pointer"
+                                            >
+                                                <option value="z0">华东 (z0)</option>
+                                                <option value="z1">华北 (z1)</option>
+                                                <option value="z2">华南 (z2)</option>
+                                                <option value="na0">北美 (na0)</option>
+                                                <option value="as0">东南亚 (as0)</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-gray-700">Domain (CDN 域名)</label>
+                                    <input
+                                        type="text"
+                                        value={qiniuDomain}
+                                        onChange={(e) => setQiniuDomain(e.target.value)}
+                                        placeholder="e.g. https://img.example.com"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 

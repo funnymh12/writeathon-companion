@@ -5,7 +5,22 @@ export interface AppStorage {
     username?: string;
     selectedSpaceId?: string;
     selectedSpaceName?: string;
-    imgbbApiKey?: string; // For image hosting
+    // Image Hosting Config
+    imageConfig?: {
+        provider: 'imgbb' | 'qiniu';
+        imgbb?: {
+            apiKey: string;
+        };
+        qiniu?: {
+            accessKey: string;
+            secretKey: string;
+            bucket: string;
+            domain: string;
+            region: string; // e.g. z0, z1, etc.
+        };
+    };
+    // Deprecated but kept for migration if needed
+    imgbbApiKey?: string;
 
     // Prompt config
     promptSpaceId?: string;
@@ -40,7 +55,15 @@ export const storage = {
     get: async (): Promise<AppStorage> => {
         return new Promise((resolve) => {
             chrome.storage.local.get(null, (result) => {
-                resolve(result as AppStorage);
+                // Migration logic for old imgbb key
+                const data = result as AppStorage;
+                if (!data.imageConfig && data.imgbbApiKey) {
+                    data.imageConfig = {
+                        provider: 'imgbb',
+                        imgbb: { apiKey: data.imgbbApiKey }
+                    };
+                }
+                resolve(data);
             });
         });
     },

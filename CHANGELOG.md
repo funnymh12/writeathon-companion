@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.3] - 2026-02-03
+
+### Added
+- **Image Hosting**: Added support for Qiniu Cloud (七牛云) as an image storage provider. You can now configure AK/SK/Bucket in Settings.
+- **Clipper**: Reinforced logic to automatically split long content (over 4000 chars) into multiple cards.
+
 ## [1.0.2] - 2026-02-03
 
 ### Added
