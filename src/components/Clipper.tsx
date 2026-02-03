@@ -22,6 +22,7 @@ const Clipper: React.FC = () => {
 
     // Page/Article Content
     const [title, setTitle] = useState('');
+    const [sourceTitle, setSourceTitle] = useState('');
     const [content, setContent] = useState('');
     const [url, setUrl] = useState('');
     const [currentTabUrl, setCurrentTabUrl] = useState(''); // To track if we are on the current tab
@@ -106,7 +107,7 @@ const Clipper: React.FC = () => {
     const getCurrentTab = async () => {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab && tab.url && tab.title) {
-            setTitle(tab.title);
+            setSourceTitle(tab.title);
             setUrl(tab.url);
             setCurrentTabUrl(tab.url);
         }
@@ -216,7 +217,7 @@ const Clipper: React.FC = () => {
             setContent(markdown);
 
             // Try to set title
-            if (doc.title) setTitle(doc.title);
+            if (doc.title) setSourceTitle(doc.title);
 
             setStatus('idle');
             setMessage('');
@@ -487,7 +488,7 @@ const Clipper: React.FC = () => {
 
                 // 3. Create First Card
                 let firstChunk = chunks[0];
-                firstChunk = firstChunk + `\n\n> 来源: [${title}](${url})`;
+                firstChunk = firstChunk + `\n\n> 来源: [${sourceTitle || title}](${url})`;
 
                 const res = await client.createCard({
                     title: title,
@@ -503,7 +504,7 @@ const Clipper: React.FC = () => {
                     if (parentId) {
                         for (let i = 1; i < chunks.length; i++) {
                             setMessage(`正在追加第 ${i + 1}/${chunks.length} 部分...`);
-                            await client.extendCard(parentId, chunks[i], `${title} (${i + 1})`);
+                            await client.extendCard(parentId, chunks[i], `${sourceTitle || title} (${i + 1})`);
                         }
                     }
                 }
@@ -539,8 +540,8 @@ const Clipper: React.FC = () => {
                 if (successCount === 0) throw new Error('没有图片能被保存');
 
                 const res = await client.createCard({
-                    title: `图片收藏: ${title}`,
-                    content: processedImagesMd + `> 来源: [${title}](${url})`,
+                    title: `图片收藏: ${sourceTitle || title}`,
+                    content: processedImagesMd + `> 来源: [${sourceTitle || title}](${url})`,
                     space: selectedSpace || undefined
                 });
                 if (!res.success) throw new Error(res.message);
