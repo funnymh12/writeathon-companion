@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
-import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X } from 'lucide-react';
+import { uploadToImgbb as uploadToImgbbUtil } from '../utils/imageUtils';
+import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X, RotateCw } from 'lucide-react';
 
 type ClipMode = 'page' | 'link' | 'image';
 
@@ -37,6 +38,10 @@ const Clipper: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        handleRefresh();
+    }, [mode]);
+
+    const handleRefresh = () => {
         if (mode === 'image') {
             scrapeImages();
         } else if (mode === 'page') {
@@ -44,7 +49,7 @@ const Clipper: React.FC = () => {
         } else if (mode === 'link') {
             scrapeLinkInfo();
         }
-    }, [mode]);
+    };
 
     const fetchSpaces = async () => {
         try {
@@ -167,19 +172,7 @@ const Clipper: React.FC = () => {
         return url.includes('wx_fmt=') || url.includes('wxfrom=') || url.includes('tp=webp');
     };
 
-    const uploadToImgbb = async (base64Data: string, apiKey: string) => {
-        const formData = new FormData();
-        const base64Clean = base64Data.replace(/^data:image\/\w+;base64,/, '');
-        formData.append('image', base64Clean);
-
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!res.ok) throw new Error('ImgBB Upload Failed');
-        return await res.json();
-    };
+    // uploadToImgbb is now imported from utils/imageUtils
 
     const fetchImageAsBase64 = async (url: string) => {
         const response = await fetch(url);
@@ -263,7 +256,9 @@ const Clipper: React.FC = () => {
                 }
 
                 let processedImagesMd = '';
-                const imgbbKey = data.imgbbApiKey || '75816997103875323284534720101905';
+                // No longer needed here as utils handles default key if missing, but we can pass null or let utility handle it.
+                // The utility reads storage itself. But here we might want to iterate. 
+                // Wait, utility uploadToImgbb does read storage.
 
                 let successCount = 0;
                 for (const src of Array.from(selectedImages)) {
@@ -274,10 +269,8 @@ const Clipper: React.FC = () => {
                         if (needsProxy) {
                             try {
                                 const base64 = await fetchImageAsBase64(src);
-                                const uploadRes = await uploadToImgbb(base64, imgbbKey);
-                                if (uploadRes.success) {
-                                    finalSrc = uploadRes.data.url;
-                                }
+                                // Use imported utility
+                                finalSrc = await uploadToImgbbUtil(base64);
                             } catch (e) {
                                 console.warn('ImgBB upload failed, falling back to original', e);
                             }
@@ -313,55 +306,65 @@ const Clipper: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-white relative">
             {/* Top Bar: Space & Mode */}
-            <div className="px-5 py-4 flex items-center justify-between bg-white z-10 border-b border-gray-50/50">
+            <div className="px-4 py-3 flex items-center justify-between bg-white z-10 border-b border-gray-50/50">
                 {/* Mode Switcher - Pill Style */}
-                <div className="flex p-1 bg-gray-100/80 rounded-lg">
+                <div className="flex p-0.5 bg-gray-100/80 rounded-lg">
                     <button
                         onClick={() => setMode('page')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${mode === 'page'
+                        className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'page'
                             ? 'bg-white text-teal-600 shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
-                        <FileText className="h-3.5 w-3.5" />
+                        <FileText className="h-3 w-3" />
                         全文
                     </button>
                     <button
                         onClick={() => setMode('link')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${mode === 'link'
+                        className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'link'
                             ? 'bg-white text-teal-600 shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
-                        <LinkIcon className="h-3.5 w-3.5" />
+                        <LinkIcon className="h-3 w-3" />
                         链接
                     </button>
                     <button
                         onClick={() => setMode('image')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${mode === 'image'
+                        className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'image'
                             ? 'bg-white text-teal-600 shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
-                        <ImageIcon className="h-3.5 w-3.5" />
+                        <ImageIcon className="h-3 w-3" />
                         图片
                     </button>
                 </div>
 
-                {/* Space Selector */}
-                <div className="relative group">
-                    <select
-                        value={selectedSpace}
-                        onChange={(e) => handleSpaceChange(e.target.value)}
-                        className="bg-transparent font-medium text-xs text-gray-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 appearance-none text-right"
+                {/* Right Side: Refresh & Space */}
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={handleRefresh}
+                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                        title="刷新内容"
                     >
-                        {spaces.map((space) => (
-                            <option key={space._id || space.id} value={space._id || space.id}>
-                                {space.title}
-                            </option>
-                        ))}
-                    </select>
-                    <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-hover:text-teal-500 transition-colors" />
+                        <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    <div className="relative group">
+                        <select
+                            value={selectedSpace}
+                            onChange={(e) => handleSpaceChange(e.target.value)}
+                            className="bg-transparent font-medium text-xs text-gray-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 pl-1 appearance-none text-right max-w-[80px] truncate"
+                        >
+                            {spaces.map((space) => (
+                                <option key={space._id || space.id} value={space._id || space.id}>
+                                    {space.title}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-hover:text-teal-500 transition-colors" />
+                    </div>
                 </div>
             </div>
 
@@ -382,7 +385,7 @@ const Clipper: React.FC = () => {
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
-                                className="w-full h-[360px] text-sm leading-7 text-gray-600 bg-white border border-gray-100 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin"
+                                className="w-full h-[360px] text-sm leading-7 text-gray-600 bg-white border border-gray-100 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin outline-none"
                                 placeholder="页面内容..."
                             />
                             <div className="absolute bottom-4 right-4 text-[10px] text-gray-300 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-gray-100">

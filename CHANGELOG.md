@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2] - 2026-02-03
+
+### Added
+- **Clipper (剪藏)**:
+  - Added a "Refresh" button to re-fetch content, link info, or images without switching modes.
+  - Refactored internal logic to use shared image upload utility.
+
 ## [1.0.1] - 2026-02-03
 
 ### Optimized
