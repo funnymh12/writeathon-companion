@@ -31,3 +31,6 @@ npm-debug.log*
 
 # Trae IDE
 .trae/
+
+# Local cache
+npm-cache/

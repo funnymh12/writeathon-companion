@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { storage } from './utils/storage';
 import Settings from './components/Settings';
 import Memo from './components/Memo';
@@ -6,7 +6,7 @@ import Recent from './components/Recent';
 import Clipper from './components/Clipper';
 import Prompt from './components/Prompt';
 import AIChat from './components/AIChat';
-import { Settings as SettingsIcon, Notebook, History, Scissors, Sparkles, MessageSquare } from 'lucide-react';
+import { Settings as SettingsIcon, Notebook, History, Scissors, Sparkles, MessageSquare, ChevronLeft, PenTool } from 'lucide-react';
 
 type Tab = 'memo' | 'recent' | 'clip' | 'prompt' | 'chat' | 'settings';
 
@@ -19,59 +19,27 @@ function App() {
     useEffect(() => {
         checkAuth();
 
-        const handleKeyDown = async (e: KeyboardEvent) => {
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-
-            const data = await storage.get();
-            const shortcuts = data.shortcuts || {
-                quickSend: 'Ctrl+Enter',
-                globalClip: 'Alt+S'
-            };
-
-            const getKeyString = (ev: KeyboardEvent) => {
-                const parts = [];
-                if (ev.ctrlKey) parts.push('Ctrl');
-                if (ev.altKey) parts.push('Alt');
-                if (ev.shiftKey) parts.push('Shift');
-                if (ev.metaKey) parts.push('Meta');
-
-                let key = ev.key.toUpperCase();
-                if (['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) return null;
-                if (key === ' ') key = 'Space';
-                if (key === 'ENTER') key = 'Enter';
-
-                parts.push(key);
-                return parts.join('+');
-            };
-
-            const pressed = getKeyString(e);
-            if (!pressed) return;
-
-            // Only handle action shortcuts now
-            if (pressed === shortcuts.quickSend) {
-                // Trigger send logic if applicable (this is usually handled within the component itself, 
-                // but we keep the listener for global context if needed)
+        // Listen for storage changes (e.g. login/logout)
+        const listener = (changes: any) => {
+            if (changes.token) {
+                checkAuth();
             }
         };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        chrome.storage.onChanged.addListener(listener);
+        return () => chrome.storage.onChanged.removeListener(listener);
     }, []);
 
     const checkAuth = async () => {
         const data = await storage.get();
         if (data.enabledModules) setEnabledModules(data.enabledModules);
 
-        if (data.token && data.userId) {
+        if (data.token) {
             setIsAuth(true);
-            // Default to first enabled module
-            const mods = data.enabledModules || { memo: true, recent: true, clip: true, prompt: true, chat: true };
-            if (mods.memo) setActiveTab('memo');
-            else if (mods.recent) setActiveTab('recent');
-            else if (mods.clip) setActiveTab('clip');
-            else if (mods.prompt) setActiveTab('prompt');
-            else if (mods.chat) setActiveTab('chat');
+            // If we were in settings (e.g. initial load), go to default
+            if (activeTab === 'settings' && !previousTab) {
+                const mods = data.enabledModules || { memo: true, recent: true, clip: true, prompt: true, chat: true };
+                if (mods.memo) setActiveTab('memo');
+            }
         } else {
             setIsAuth(false);
             setActiveTab('settings');
@@ -85,117 +53,147 @@ function App() {
         setActiveTab(tab);
     };
 
-    const handleSettingsBack = () => {
-        setActiveTab(previousTab);
-    };
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'memo': return <Memo />;
-            case 'recent': return <Recent />;
-            case 'clip': return <Clipper />;
-            case 'prompt': return <Prompt />;
-            case 'chat': return <AIChat />;
-            case 'settings':
-                return (
-                    <Settings
-                        onSuccess={() => { setIsAuth(true); setActiveTab('memo'); }}
-                        onBack={handleSettingsBack}
-                        isAuthenticated={isAuth === true}
-                    />
-                );
-            default: return <Memo />;
+    const handleBack = () => {
+        if (previousTab && previousTab !== 'settings') {
+            setActiveTab(previousTab);
+        } else {
+            setActiveTab('memo');
         }
     };
 
     if (isAuth === null) {
         return (
             <div className="flex h-screen items-center justify-center bg-white">
-                <div className="flex items-center gap-2 text-teal-500">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-teal-500 border-t-transparent"></div>
-                    <span className="text-gray-600 font-medium">加载中...</span>
-                </div>
+                <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
             </div>
         );
     }
 
     return (
-        <div className="flex h-screen flex-col bg-white overflow-hidden">
-            <header className="flex h-14 items-center justify-between border-b px-4 shrink-0 bg-white z-10">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center shadow-sm">
-                        <span className="text-white font-bold text-sm">写</span>
-                    </div>
-                    <span className="font-bold text-base text-gray-800 tracking-tight">写拉松小助手</span>
+        <div className="flex h-screen flex-col bg-gray-50 font-sans text-gray-900 overflow-hidden">
+            {/* Header */}
+            <header className="flex h-14 items-center justify-between px-5 shrink-0 bg-white/80 backdrop-blur-md z-30 transition-all border-b border-gray-100 relative">
+                <div className="flex items-center gap-3">
+                    {activeTab === 'settings' && isAuth ? (
+                        <button
+                            onClick={handleBack}
+                            className="p-1.5 -ml-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
+                        >
+                            <ChevronLeft className="h-6 w-6" />
+                        </button>
+                    ) : (
+                        <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center shadow-sm shadow-teal-200 ring-1 ring-white">
+                            <PenTool className="h-4 w-4 text-white" />
+                        </div>
+                    )}
+
+                    {activeTab === 'settings' ? (
+                        <span className="font-bold text-base text-gray-800">设置</span>
+                    ) : (
+                        <span className="font-bold text-base text-gray-800 tracking-tight">写拉松</span>
+                    )}
                 </div>
-                {isAuth && (
+
+                {isAuth && activeTab !== 'settings' && (
                     <button
                         onClick={() => handleTabChange('settings')}
-                        className={`rounded-full p-2 transition-all ${activeTab === 'settings' ? 'text-teal-500 bg-teal-50' : 'text-gray-400 hover:text-teal-500 hover:bg-teal-50/50'}`}
+                        className="rounded-full p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
                     >
                         <SettingsIcon className="h-5 w-5" />
                     </button>
                 )}
             </header>
 
-            <main className="flex-1 overflow-y-auto bg-gray-50/50 relative">
-                {renderContent()}
+            {/* Main Content */}
+            <main className="flex-1 overflow-hidden relative flex flex-col bg-white">
+                {activeTab === 'memo' && <Memo />}
+                {activeTab === 'recent' && <Recent />}
+                {activeTab === 'clip' && <Clipper />}
+                {activeTab === 'prompt' && <Prompt />}
+                {activeTab === 'chat' && <AIChat />}
+                {activeTab === 'settings' && <Settings />}
             </main>
 
-            {isAuth && (activeTab !== 'settings') && (
-                <nav className="flex h-16 border-t bg-white items-center justify-around px-1 shrink-0">
-                    {enabledModules.memo && (
-                        <button
-                            onClick={() => setActiveTab('memo')}
-                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'memo' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <Notebook size={20} className={activeTab === 'memo' ? 'scale-110' : ''} />
-                            <span className="text-[10px] font-bold">速记</span>
-                        </button>
-                    )}
-
-                    {enabledModules.recent && (
-                        <button
-                            onClick={() => setActiveTab('recent')}
-                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'recent' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <History size={20} className={activeTab === 'recent' ? 'scale-110' : ''} />
-                            <span className="text-[10px] font-bold">最近</span>
-                        </button>
-                    )}
-
-                    {enabledModules.clip && (
-                        <button
-                            onClick={() => setActiveTab('clip')}
-                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'clip' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <Scissors size={20} className={activeTab === 'clip' ? 'scale-110' : ''} />
-                            <span className="text-[10px] font-bold">剪藏</span>
-                        </button>
-                    )}
-
-                    {enabledModules.prompt && (
-                        <button
-                            onClick={() => setActiveTab('prompt')}
-                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'prompt' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <Sparkles size={20} className={activeTab === 'prompt' ? 'scale-110' : ''} />
-                            <span className="text-[10px] font-bold">Prompt</span>
-                        </button>
-                    )}
-
-                    {enabledModules.chat && (
-                        <button
-                            onClick={() => setActiveTab('chat')}
-                            className={`flex flex-col items-center gap-1 transition-all py-1.5 flex-1 ${activeTab === 'chat' ? 'text-teal-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <MessageSquare size={20} className={activeTab === 'chat' ? 'scale-110' : ''} />
-                            <span className="text-[10px] font-bold">AI Chat</span>
-                        </button>
-                    )}
+            {/* Navigation Bar */}
+            {isAuth && activeTab !== 'settings' && (
+                <nav className="flex h-[68px] bg-white items-center justify-around px-2 shrink-0 border-t border-gray-100 shadow-[0_-4px_20px_-8px_rgba(0,0,0,0.05)] z-30 pb-safe">
+                    <NavButton
+                        active={activeTab === 'memo'}
+                        onClick={() => handleTabChange('memo')}
+                        icon={<Notebook size={24} strokeWidth={activeTab === 'memo' ? 2.5 : 2} />}
+                        label="速记"
+                        visible={enabledModules.memo}
+                    />
+                    <NavButton
+                        active={activeTab === 'recent'}
+                        onClick={() => handleTabChange('recent')}
+                        icon={<History size={24} strokeWidth={activeTab === 'recent' ? 2.5 : 2} />}
+                        label="最近"
+                        visible={enabledModules.recent}
+                    />
+                    <NavButton
+                        active={activeTab === 'clip'}
+                        onClick={() => handleTabChange('clip')}
+                        icon={<Scissors size={24} strokeWidth={activeTab === 'clip' ? 2.5 : 2} />}
+                        label="剪藏"
+                        visible={enabledModules.clip}
+                    />
+                    <NavButton
+                        active={activeTab === 'prompt'}
+                        onClick={() => handleTabChange('prompt')}
+                        icon={<Sparkles size={24} strokeWidth={activeTab === 'prompt' ? 2.5 : 2} />}
+                        label="灵感"
+                        visible={enabledModules.prompt}
+                    />
+                    <NavButton
+                        active={activeTab === 'chat'}
+                        onClick={() => handleTabChange('chat')}
+                        icon={<MessageSquare size={24} strokeWidth={activeTab === 'chat' ? 2.5 : 2} />}
+                        label="助手"
+                        visible={enabledModules.chat}
+                    />
                 </nav>
             )}
         </div>
+    );
+}
+
+function NavButton({ active, onClick, icon, label, visible }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; visible: boolean }) {
+    if (!visible) return null;
+    return (
+        <button
+            onClick={onClick}
+            className={`relative flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-300 group ${active ? 'text-teal-600' : 'text-gray-400 hover:text-gray-500'}`}
+        >
+            <div className={`transition-all duration-300 ${active ? '-translate-y-1 scale-110' : 'group-hover:-translate-y-0.5'}`}>
+                {icon}
+            </div>
+            <span className={`text-[10px] font-medium transition-all duration-300 ${active ? 'opacity-100 font-bold' : 'opacity-70 group-hover:opacity-100'}`}>
+                {label}
+            </span>
+            {active && (
+                <div className="absolute bottom-1.5 w-1 h-1 bg-teal-500 rounded-full animate-in fade-in zoom-in duration-300" />
+            )}
+        </button>
+    );
+}
+
+function Loader2({ className }: { className?: string }) {
+    return (
+        <svg
+            className={className}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
     );
 }
 

@@ -1,19 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { storage } from '../utils/storage';
+import React, { useState, useEffect, useRef } from 'react';
 import { WriteathonClient } from '../utils/api';
-import {
-    Send,
-    Trash2,
-    Sparkles,
-    Loader2,
-    Save,
-    User,
-    Bot,
-    ChevronDown,
-    RefreshCw,
-    Copy,
-    Check
-} from 'lucide-react';
+import { storage } from '../utils/storage';
+import { Send, Loader2, Trash2, Bot, User, Sparkles, Copy, Check, ChevronDown, Settings as SettingsIcon } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -24,121 +13,108 @@ interface Message {
 const AIChat: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [aiConfig, setAiConfig] = useState<any>(null);
-    const [error, setError] = useState('');
-    const [copied, setCopied] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [config, setConfig] = useState<any>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    // Auto-scroll to bottom
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
-    const loadData = async () => {
+    useEffect(() => {
+        loadConfig();
+        loadHistory();
+    }, []);
+
+    const loadConfig = async () => {
         const data = await storage.get();
-        if (data.chatHistory) setMessages(data.chatHistory);
-        if (data.aiConfig) setAiConfig(data.aiConfig);
+        setConfig(data.aiConfig || { provider: 'gemini', model: 'gemini-2.0-flash-exp' });
     };
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const loadHistory = async () => {
+        const data = await storage.get();
+        if (data.chatHistory) {
+            setMessages(data.chatHistory);
+        }
+    };
+
+    const saveHistory = async (newMessages: Message[]) => {
+        await storage.set({ chatHistory: newMessages });
     };
 
     const handleSend = async () => {
-        if (!input.trim() || isLoading) return;
-        if (!aiConfig || !aiConfig.providers[aiConfig.activeProvider].apiKey) {
-            setError('请先在设置中配置 AI API Key');
-            return;
-        }
+        if (!input.trim() || loading) return;
 
-        const userMessage: Message = {
-            role: 'user',
-            content: input.trim(),
-            timestamp: Date.now()
-        };
-
-        const newMessages = [...messages, userMessage];
-        setMessages(newMessages);
+        const userMsg: Message = { role: 'user', content: input, timestamp: Date.now() };
+        const updatedMessages = [...messages, userMsg];
+        setMessages(updatedMessages);
         setInput('');
-        setIsLoading(true);
-        setError('');
+        setLoading(true);
+        saveHistory(updatedMessages);
 
         try {
-            const provider = aiConfig.activeProvider;
-            const config = aiConfig.providers[provider];
+            if (!config?.apiKey) throw new Error('请先在设置中配置 API Key');
 
-            // 构建请求
-            let response;
-            if (provider === 'gemini') {
-                response = await callGemini(config, newMessages);
+            let responseText = '';
+
+            if (config.provider === 'gemini') {
+                responseText = await callGemini(updatedMessages);
             } else {
-                response = await callOpenAICompatible(provider, config, newMessages);
+                // Open AI Compatible (openai or custom)
+                responseText = await callOpenAICompatible(updatedMessages);
             }
 
-            const assistantMessage: Message = {
-                role: 'assistant',
-                content: response,
-                timestamp: Date.now()
-            };
-
-            const finalMessages = [...newMessages, assistantMessage];
+            const aiMsg: Message = { role: 'assistant', content: responseText, timestamp: Date.now() };
+            const finalMessages = [...updatedMessages, aiMsg];
             setMessages(finalMessages);
-            await storage.set({ chatHistory: finalMessages });
+            saveHistory(finalMessages);
 
         } catch (err: any) {
-            setError(err.message || '对话失败，请检查网络或 API 配置');
+            const errorMsg: Message = { role: 'assistant', content: `Error: ${err.message}`, timestamp: Date.now() };
+            setMessages([...updatedMessages, errorMsg]);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     };
 
-    const callGemini = async (config: any, history: Message[]) => {
-        const modelName = config.model.startsWith('models/') ? config.model.replace('models/', '') : config.model;
-        const baseUrl = config.baseUrl || 'https://generativelanguage.googleapis.com';
-        // Remove trailing slash if present
-        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-        const url = `${cleanBaseUrl}/v1beta/models/${modelName}:generateContent?key=${config.apiKey}`;
+    const callGemini = async (history: Message[]) => {
+        const cleanBaseUrl = (config.baseUrl || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
+        const url = `${cleanBaseUrl}/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+
+        // Gemini format
+        const contents = history.map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content }]
+        }));
 
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: history.map(m => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.content }]
-                }))
-            })
+            body: JSON.stringify({ contents })
         });
 
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || '请求失败');
+        }
+
         const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-
-        if (!data.candidates || data.candidates.length === 0) {
-            if (data.promptFeedback?.blockReason) {
-                throw new Error(`请求被屏蔽: ${data.promptFeedback.blockReason}`);
-            }
-            throw new Error('API 未返回有效内容，请检查模型权限或 API Key 状态');
-        }
-
-        const candidate = data.candidates[0];
-        if (candidate.finishReason === 'SAFETY') {
-            throw new Error('响应内容因安全策略被拦截');
-        }
-
-        if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
-            throw new Error('模型返回了空内容');
-        }
-
-        return candidate.content.parts[0].text;
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '无回复';
     };
 
-    const callOpenAICompatible = async (provider: string, config: any, history: Message[]) => {
-        const baseUrl = config.baseUrl || (provider === 'openai' ? 'https://api.openai.com/v1' : '');
-        if (!baseUrl) throw new Error(`${provider} 缺少 Base URL`);
+    const callOpenAICompatible = async (history: Message[]) => {
+        const baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
+
+        const msgs = history.map(m => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.content
+        }));
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
@@ -148,161 +124,139 @@ const AIChat: React.FC = () => {
             },
             body: JSON.stringify({
                 model: config.model,
-                messages: history.map(m => ({
-                    role: m.role,
-                    content: m.content
-                }))
+                messages: msgs
             })
         });
 
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || '请求失败');
+        }
+
         const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-        return data.choices[0].message.content;
+        return data.choices?.[0]?.message?.content || '无回复';
     };
 
     const clearHistory = async () => {
-        if (window.confirm('确定要清空聊天历史吗？')) {
-            setMessages([]);
-            await storage.set({ chatHistory: [] });
-        }
+        setMessages([]);
+        await storage.set({ chatHistory: [] });
     };
 
-    const saveToWriteathon = async (content: string) => {
-        try {
-            const data = await storage.get();
-            if (!data.token || !data.userId) {
-                setError('请先登录写拉松');
-                return;
-            }
-
-            const client = new WriteathonClient(data.token, data.userId);
-            const res = await client.createCard({
-                title: `AI 对话片段 ${new Date().toLocaleDateString()}`,
-                content: content,
-                space: data.selectedSpaceId
-            });
-
-            if (res.success) {
-                alert('已保存到写拉松');
-            } else {
-                setError('保存失败: ' + res.message);
-            }
-        } catch (err) {
-            setError('保存过程中出错');
-        }
+    const copyMessage = (content: string, index: number) => {
+        navigator.clipboard.writeText(content);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleModelChange = (newModel: string) => {
+        const newConfig = { ...config, model: newModel };
+        setConfig(newConfig);
+        storage.set({ aiConfig: newConfig });
     };
 
     return (
-        <div className="flex flex-col h-full bg-white overflow-hidden relative">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-gray-50 bg-white z-10 sticky top-0 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-teal-50 text-teal-600 rounded-lg">
-                        <Sparkles size={16} />
+        <div className="flex flex-col h-full bg-white relative">
+            {/* Header: Model Selector */}
+            <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between bg-white/80 backdrop-blur z-10 sticky top-0">
+                <div className="flex items-center gap-2 group relative">
+                    <div className="p-1.5 bg-gradient-to-tr from-teal-500 to-emerald-500 rounded-lg text-white shadow-sm">
+                        <Bot className="h-4 w-4" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-gray-800">AI 助手</h3>
-                        <p className="text-[10px] text-gray-400">当前: {aiConfig?.activeProvider} ({aiConfig?.providers[aiConfig?.activeProvider]?.model})</p>
+                        {config?.provider === 'gemini' ? (
+                            <div className="relative group/select">
+                                <select
+                                    value={config.model}
+                                    onChange={(e) => handleModelChange(e.target.value)}
+                                    className="appearance-none bg-transparent font-bold text-xs text-gray-700 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-6"
+                                >
+                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                </select>
+                                <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-hover/select:text-teal-500 transition-colors mt-[1px]" />
+                            </div>
+                        ) : (
+                            <div className="text-xs font-bold text-gray-700 py-1">
+                                {config?.model || 'AI Model'}
+                            </div>
+                        )}
+                        <div className="text-[9px] text-gray-400 font-medium -mt-1 pl-0.5 capitalize">{config?.provider || 'AI'} Assistant</div>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={clearHistory}
-                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                        title="清空记录"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                    <button
-                        onClick={loadData}
-                        className="p-1.5 text-gray-400 hover:text-teal-500 transition-colors"
-                        title="同步配置"
-                    >
-                        <RefreshCw size={16} />
-                    </button>
-                </div>
+
+                <button
+                    onClick={clearHistory}
+                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                    title="清空历史"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </button>
             </div>
 
-            {/* Message List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
-                {messages.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center opacity-40 space-y-4">
-                        <div className="p-4 bg-gray-50 rounded-full">
-                            <Bot size={40} className="text-gray-300" />
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 scrollbar-thin">
+                {messages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 opacity-50 pb-20">
+                        <div className="w-16 h-16 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-full flex items-center justify-center mb-2">
+                            <Sparkles className="h-8 w-8 text-teal-200" />
                         </div>
-                        <p className="text-sm">今天想聊点什么？</p>
+                        <p className="text-xs text-center max-w-[200px] leading-relaxed">
+                            你好！我是你的 AI 助手。<br />
+                            有什么可以帮你的吗？
+                        </p>
                     </div>
-                )}
-
-                {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                        <div className={`flex items-center gap-2 mb-1 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                            <div className={`p-1 rounded-md ${msg.role === 'user' ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-600'}`}>
-                                {msg.role === 'user' ? <User size={12} /> : <Bot size={12} />}
+                ) : (
+                    messages.map((msg, index) => (
+                        <div
+                            key={index}
+                            className={`flex gap-3 animate-in slide-in-from-bottom-2 duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                        >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user'
+                                    ? 'bg-gray-100/50 text-gray-500'
+                                    : 'bg-gradient-to-br from-teal-500 to-emerald-500 text-white'
+                                }`}>
+                                {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                             </div>
-                            <span className="text-[10px] text-gray-400 font-medium">
-                                {msg.role === 'user' ? '我' : 'AI'} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                        </div>
 
-                        <div className={`max-w-[90%] p-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                            ? 'bg-teal-600 text-white rounded-tr-none'
-                            : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-100'
-                            }`}>
-                            <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-
-                            {msg.role === 'assistant' && (
-                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center gap-3">
-                                    <button
-                                        onClick={() => copyToClipboard(msg.content)}
-                                        className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-teal-600 transition-colors"
-                                    >
-                                        {copied ? <Check size={10} /> : <Copy size={10} />}
-                                        保存复制
-                                    </button>
-                                    <button
-                                        onClick={() => saveToWriteathon(msg.content)}
-                                        className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-teal-600 transition-colors"
-                                    >
-                                        <Save size={10} />
-                                        存入写拉松
-                                    </button>
+                            <div className={`group relative max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user'
+                                    ? 'bg-white border border-gray-100 text-gray-800 rounded-tr-sm'
+                                    : 'bg-white border border-gray-100 text-gray-700 rounded-tl-sm'
+                                }`}>
+                                <div className="prose prose-sm prose-teal max-w-none break-words">
+                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
 
-                {isLoading && (
-                    <div className="flex items-start gap-2 animate-pulse">
-                        <div className="p-1 bg-gray-100 text-gray-600 rounded-md">
-                            <Bot size={12} />
+                                {/* Copy Button */}
+                                <button
+                                    onClick={() => copyMessage(msg.content, index)}
+                                    className={`absolute -bottom-6 ${msg.role === 'user' ? 'right-0' : 'left-0'} p-1 text-gray-300 hover:text-teal-600 transition-colors opacity-0 group-hover:opacity-100`}
+                                    title="复制"
+                                >
+                                    {copiedIndex === index ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                                </button>
+                            </div>
                         </div>
-                        <div className="bg-gray-50 border border-gray-100 p-3 rounded-2xl rounded-tl-none">
-                            <Loader2 size={16} className="animate-spin text-teal-500" />
+                    ))
+                )}
+                {loading && (
+                    <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                            <Bot className="h-4 w-4" />
+                        </div>
+                        <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Error Message */}
-            {error && (
-                <div className="px-4 py-2 bg-red-50 text-red-500 text-[10px] border-t border-red-100 flex items-center justify-between">
-                    <span>{error}</span>
-                    <button onClick={() => setError('')} className="font-bold">✕</button>
-                </div>
-            )}
-
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-gray-50">
-                <div className="relative">
+            <div className="p-4 bg-white border-t border-gray-50 z-20">
+                <div className="relative flex items-end gap-2 bg-gray-50/50 rounded-2xl border border-gray-200/50 p-2 focus-within:bg-white focus-within:border-teal-200 focus-within:ring-2 focus-within:ring-teal-50 transition-all shadow-sm">
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -312,22 +266,24 @@ const AIChat: React.FC = () => {
                                 handleSend();
                             }
                         }}
-                        placeholder="输入消息，Shift + Enter 换行..."
-                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none max-h-32 min-h-[50px] scrollbar-none"
+                        placeholder="输入消息..."
+                        className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none focus:ring-0 text-sm py-3 px-2 resize-none placeholder:text-gray-400 text-gray-700 leading-relaxed"
+                        disabled={loading}
+                        rows={1}
                     />
                     <button
                         onClick={handleSend}
-                        disabled={!input.trim() || isLoading}
-                        className={`absolute right-2 bottom-2 p-2 rounded-xl transition-all ${input.trim() && !isLoading
-                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20 hover:scale-105 active:scale-95'
-                            : 'bg-gray-100 text-gray-400'
+                        disabled={!input.trim() || loading}
+                        className={`p-2.5 rounded-xl transition-all mb-0.5 shrink-0 ${input.trim() && !loading
+                                ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md shadow-teal-200'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             }`}
                     >
-                        {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </button>
                 </div>
-                <div className="mt-2 flex items-center justify-center">
-                    <p className="text-[10px] text-gray-300">使用 {aiConfig?.activeProvider || '默认'} 模型提供动力</p>
+                <div className="text-[10px] text-center text-gray-300 mt-2 font-medium">
+                    AI 可能产生错误信息，请核对重要事实
                 </div>
             </div>
         </div>

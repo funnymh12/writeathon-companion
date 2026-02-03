@@ -1,18 +1,22 @@
 export interface AppStorage {
     token?: string;
+    baseUrl?: string; // Writeathon API Base URL
     userId?: string;
     username?: string;
     selectedSpaceId?: string;
     selectedSpaceName?: string;
     imgbbApiKey?: string; // For image hosting
-    // Prompt 管理相关
+
+    // Prompt config
     promptSpaceId?: string;
     pinnedPrompts?: string[];
     recentUsedPrompts?: { id: string; timestamp: number }[];
+
     shortcuts?: {
-        quickSend: string;
-        globalClip: string;
+        quickSend?: string;
+        globalClip?: string;
     };
+
     enabledModules?: {
         memo: boolean;
         recent: boolean;
@@ -20,29 +24,23 @@ export interface AppStorage {
         prompt: boolean;
         chat: boolean;
     };
-    // AI Chat 相关配置
+
+    // AI Chat Config (Simplified)
     aiConfig?: {
-        activeProvider: 'openai' | 'gemini' | 'deepseek' | 'doubao' | 'custom';
-        providers: {
-            openai: { apiKey: string; model: string; baseUrl?: string };
-            gemini: { apiKey: string; model: string };
-            deepseek: { apiKey: string; model: string; baseUrl?: string };
-            doubao: { apiKey: string; model: string; baseUrl?: string };
-            custom: { apiKey: string; model: string; baseUrl: string };
-        };
+        provider: 'gemini' | 'openai' | 'custom';
+        apiKey: string;
+        model: string;
+        baseUrl?: string; // For openai/custom
     };
+
     chatHistory?: { role: 'user' | 'assistant'; content: string; timestamp: number }[];
 }
 
 export const storage = {
     get: async (): Promise<AppStorage> => {
         return new Promise((resolve) => {
-            chrome.storage.local.get([
-                'token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName',
-                'imgbbApiKey', 'shortcuts', 'promptSpaceId', 'pinnedPrompts', 'recentUsedPrompts',
-                'aiConfig', 'chatHistory', 'enabledModules'
-            ], (result) => {
-                resolve(result);
+            chrome.storage.local.get(null, (result) => {
+                resolve(result as AppStorage);
             });
         });
     },
@@ -55,7 +53,7 @@ export const storage = {
     },
     clear: async (): Promise<void> => {
         return new Promise((resolve) => {
-            chrome.storage.local.remove(['token', 'userId', 'username', 'selectedSpaceId', 'selectedSpaceName', 'shortcuts'], () => {
+            chrome.storage.local.clear(() => {
                 resolve();
             });
         });
