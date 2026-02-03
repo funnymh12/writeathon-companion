@@ -154,6 +154,16 @@ const AIChat: React.FC = () => {
         storage.set({ aiConfig: newConfig });
     };
 
+    // Auto-resize Input
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+        }
+    }, [input]);
+
     return (
         <div className="flex flex-col h-full bg-white relative">
             {/* Header: Model Selector */}
@@ -174,7 +184,7 @@ const AIChat: React.FC = () => {
                                     <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                                     <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
                                 </select>
-                                <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-hover/select:text-teal-500 transition-colors mt-[1px]" />
+                                <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-hover:text-teal-500 transition-colors mt-[1px]" />
                             </div>
                         ) : (
                             <div className="text-xs font-bold text-gray-700 py-1">
@@ -213,15 +223,15 @@ const AIChat: React.FC = () => {
                             className={`flex gap-3 animate-in slide-in-from-bottom-2 duration-300 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                         >
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user'
-                                    ? 'bg-gray-100/50 text-gray-500'
-                                    : 'bg-gradient-to-br from-teal-500 to-emerald-500 text-white'
+                                ? 'bg-gray-100/50 text-gray-500'
+                                : 'bg-gradient-to-br from-teal-500 to-emerald-500 text-white'
                                 }`}>
                                 {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                             </div>
 
                             <div className={`group relative max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                                    ? 'bg-white border border-gray-100 text-gray-800 rounded-tr-sm'
-                                    : 'bg-white border border-gray-100 text-gray-700 rounded-tl-sm'
+                                ? 'bg-white border border-gray-100 text-gray-800 rounded-tr-sm'
+                                : 'bg-white border border-gray-100 text-gray-700 rounded-tl-sm'
                                 }`}>
                                 <div className="prose prose-sm prose-teal max-w-none break-words">
                                     <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -258,6 +268,7 @@ const AIChat: React.FC = () => {
             <div className="p-4 bg-white border-t border-gray-50 z-20">
                 <div className="relative flex items-end gap-2 bg-gray-50/50 rounded-2xl border border-gray-200/50 p-2 focus-within:bg-white focus-within:border-teal-200 focus-within:ring-2 focus-within:ring-teal-50 transition-all shadow-sm">
                     <textarea
+                        ref={inputRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -267,16 +278,17 @@ const AIChat: React.FC = () => {
                             }
                         }}
                         placeholder="输入消息..."
-                        className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none focus:ring-0 text-sm py-3 px-2 resize-none placeholder:text-gray-400 text-gray-700 leading-relaxed"
+                        className="flex-1 max-h-32 min-h-[44px] bg-transparent border-none focus:ring-0 focus:outline-none text-sm py-3 px-2 resize-none placeholder:text-gray-400 text-gray-700 leading-relaxed outline-none"
                         disabled={loading}
                         rows={1}
+                        style={{ height: '44px' }}
                     />
                     <button
                         onClick={handleSend}
                         disabled={!input.trim() || loading}
                         className={`p-2.5 rounded-xl transition-all mb-0.5 shrink-0 ${input.trim() && !loading
-                                ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md shadow-teal-200'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            ? 'bg-teal-500 text-white hover:bg-teal-600 shadow-md shadow-teal-200'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             }`}
                     >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
