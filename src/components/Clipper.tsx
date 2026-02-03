@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { uploadImage } from '../utils/imageUtils';
-import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X, RotateCw } from 'lucide-react';
+import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X, RotateCw, Globe } from 'lucide-react';
 
-type ClipMode = 'page' | 'link' | 'image';
+type ClipMode = 'article' | 'image';
 
 interface ScrapedImage {
     src: string;
@@ -18,24 +18,18 @@ const Clipper: React.FC = () => {
     const [message, setMessage] = useState('');
     const [spaces, setSpaces] = useState<Space[]>([]);
     const [selectedSpace, setSelectedSpace] = useState('');
-    const [mode, setMode] = useState<ClipMode>('page');
+    const [mode, setMode] = useState<ClipMode>('article');
 
-    // Page/Link Content
+    // Page/Article Content
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [url, setUrl] = useState('');
+    const [currentTabUrl, setCurrentTabUrl] = useState(''); // To track if we are on the current tab
 
     // Image Content
     const [images, setImages] = useState<ScrapedImage[]>([]);
     const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
     const [viewFullImage, setViewFullImage] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetchSpaces();
-        getCurrentTab();
-        // Default to loading page content
-        scrapePageContent();
-    }, []);
 
     useEffect(() => {
         fetchSpaces();
@@ -114,15 +108,133 @@ const Clipper: React.FC = () => {
         if (tab && tab.url && tab.title) {
             setTitle(tab.title);
             setUrl(tab.url);
+            setCurrentTabUrl(tab.url);
+        }
+    };
+
+    // Shared cleaner logic for Local parsing
+    const localCleanNode = (node: Node): string => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || '';
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+        const el = node as HTMLElement;
+        const tagName = el.tagName.toLowerCase();
+
+        // Hidden elements checks are harder on disconnected DOM, simple check
+        if (el.style.display === 'none' || el.style.visibility === 'hidden') return '';
+        if (['script', 'style', 'nav', 'footer', 'header', 'aside', 'noscript', 'iframe', 'svg'].includes(tagName)) return '';
+
+        let childrenText = '';
+        el.childNodes.forEach(child => {
+            childrenText += localCleanNode(child);
+        });
+
+        switch (tagName) {
+            case 'h1': return `\n# ${childrenText} \n\n`;
+            case 'h2': return `\n## ${childrenText} \n\n`;
+            case 'h3': return `\n### ${childrenText} \n\n`;
+            case 'h4': return `\n#### ${childrenText} \n\n`;
+            case 'h5': return `\n##### ${childrenText} \n\n`;
+            case 'h6': return `\n###### ${childrenText} \n\n`;
+            case 'p': return `\n${childrenText} \n\n`;
+            case 'br': return '\n';
+            case 'hr': return '\n---\n';
+            case 'blockquote': return `\n > ${childrenText} \n\n`;
+            case 'code': return `\`${childrenText}\``;
+            case 'pre': return `\n\`\`\`\n${childrenText}\n\`\`\`\n\n`;
+            case 'strong':
+            case 'b': return `**${childrenText}**`;
+            case 'em':
+            case 'i': return `*${childrenText}*`;
+            case 'a': {
+                const href = el.getAttribute('href');
+                if (!href || href.startsWith('javascript:')) return childrenText;
+                // Resolve relative URLs if possible
+                let absoluteHref = href;
+                try {
+                    absoluteHref = new URL(href, url).href;
+                } catch { }
+                return `[${childrenText}](${absoluteHref})`;
+            }
+            case 'img': {
+                const src = el.getAttribute('src');
+                const realSrc = src || el.getAttribute('data-src') || el.getAttribute('data-original');
+                if (!realSrc || realSrc.startsWith('data:')) return '';
+                // Resolve relative
+                let absoluteSrc = realSrc;
+                try {
+                    absoluteSrc = new URL(realSrc, url).href;
+                } catch { }
+                const alt = el.getAttribute('alt') || '';
+                return `![${alt}](${absoluteSrc})`;
+            }
+            case 'ul': return `\n${childrenText}\n`;
+            case 'ol': return `\n${childrenText}\n`;
+            case 'li': return `- ${childrenText}\n`;
+            case 'div':
+            case 'section':
+            case 'article':
+            case 'main':
+                return `\n${childrenText}\n`;
+            default: return childrenText;
+        }
+    };
+
+    const scrapeExternalUrl = async (targetUrl: string) => {
+        setStatus('loading');
+        setMessage('正在解析外部链接...');
+        try {
+            const res = await fetch(targetUrl);
+            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+            const html = await res.text();
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Heuristic for content
+            let root: HTMLElement = doc.body;
+            const article = doc.querySelector('article');
+            const main = doc.querySelector('main');
+            const contentDiv = doc.querySelector('.content') || doc.querySelector('.post-content') || doc.querySelector('#content');
+            if (article) root = article as HTMLElement;
+            else if (main) root = main as HTMLElement;
+            else if (contentDiv) root = contentDiv as HTMLElement;
+
+            // Use local cleaner
+            // Note: We need to bind the URL for relative path resolution in localCleanNode, 
+            // but `localCleanNode` closes over the state `url`. 
+            // Better to ensure `url` state is updated before calling or pass it.
+            // Since `setUrl` is async, we rely on the fact that `url` input matches `targetUrl` usually,
+            // but let's be safe and assume `targetUrl` is the base.
+
+            // Re-implementing specific relative resolution inside localCleanNode relies on `url` state.
+            // Let's rely on `url` being set, or update it now.
+
+            const markdown = localCleanNode(root).replace(/\n{3,}/g, '\n\n').trim();
+            setContent(markdown);
+
+            // Try to set title
+            if (doc.title) setTitle(doc.title);
+
+            setStatus('idle');
+            setMessage('');
+        } catch (e: any) {
+            console.error('External scrape failed', e);
+            setStatus('error');
+            setMessage(`解析失败: ${e.message}`);
         }
     };
 
     const scrapePageContent = async () => {
         setStatus('loading');
+        setMessage('正在解析当前页面...');
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab?.id || tab.url?.startsWith('chrome://')) {
                 setStatus('idle');
+                setMessage('无法解析此页面');
                 return;
             }
 
@@ -208,22 +320,24 @@ const Clipper: React.FC = () => {
                 setContent(results[0].result as string);
             }
             setStatus('idle');
+            setMessage('');
         } catch (err) {
             console.error('Scrape failed', err);
-            setStatus('idle');
+            setStatus('error');
+            setMessage('解析当前页面失败');
         }
-    };
-
-    const scrapeLinkInfo = async () => {
-        await getCurrentTab();
-        setContent(''); // Link mode, content starts empty mostly
     };
 
     const scrapeImages = async () => {
         setStatus('loading');
+        setMessage('正在提取图片...');
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab?.id || tab.url?.startsWith('chrome://')) return;
+            if (!tab?.id || tab.url?.startsWith('chrome://')) {
+                setStatus('idle');
+                setMessage('无法提取此页面图片');
+                return;
+            }
 
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
@@ -245,20 +359,27 @@ const Clipper: React.FC = () => {
                 setImages(results[0].result || []);
             }
             setStatus('idle');
+            setMessage('');
         } catch (err) {
             console.error('Image scrape failed', err);
-            setStatus('idle');
+            setStatus('error');
+            setMessage('提取图片失败');
         }
     };
 
-    // Handle Refresh
-    const handleRefresh = () => {
+    // Handle Refresh / Parse
+    const handleRefresh = async () => {
+        setMessage('');
         if (mode === 'image') {
             scrapeImages();
-        } else if (mode === 'page') {
-            scrapePageContent();
-        } else if (mode === 'link') {
-            scrapeLinkInfo();
+        } else if (mode === 'article') {
+            // Check if URL is current tab
+            if (url === currentTabUrl || url.trim() === '') {
+                scrapePageContent();
+            } else {
+                // External URL
+                await scrapeExternalUrl(url);
+            }
         }
     };
 
@@ -281,17 +402,25 @@ const Clipper: React.FC = () => {
 
         // Process sequentially (or concurrent with limit)
         for (const m of matches) {
-            const { url } = m;
-            if (!url || url.startsWith('http') === false) continue;
+            const { url: imageUrl } = m;
+            if (!imageUrl || imageUrl.startsWith('http') === false) continue;
 
-            const needsProxy = isLikelyHotlinked(url) || !(await checkImageAccessible(url));
+            // Try to resolve relative URLs if they leaked through
+            let absoluteUrl = imageUrl;
+            try {
+                // If it's not absolute, new URL(url) throws.
+                // We can use the current 'url' state as base.
+                absoluteUrl = new URL(imageUrl, thisUrlIsAbsolute(imageUrl) ? undefined : url).href;
+            } catch { }
+
+            const needsProxy = isLikelyHotlinked(absoluteUrl) || !(await checkImageAccessible(absoluteUrl));
             if (needsProxy) {
                 try {
-                    const base64 = await fetchImageAsBase64(url);
+                    const base64 = await fetchImageAsBase64(absoluteUrl);
                     const newUrl = await uploadImage(base64);
-                    replacements.push({ original: url, newUrl });
+                    replacements.push({ original: imageUrl, newUrl }); // Replace original match string
                 } catch (e) {
-                    console.warn(`Failed to process image ${url}`, e);
+                    console.warn(`Failed to process image ${absoluteUrl}`, e);
                 }
             }
         }
@@ -302,6 +431,10 @@ const Clipper: React.FC = () => {
             newMarkdown = newMarkdown.split(rep.original).join(rep.newUrl);
         }
         return newMarkdown;
+    };
+
+    const thisUrlIsAbsolute = (u: string) => {
+        try { new URL(u); return true; } catch { return false; }
     };
 
     const smartSplit = (text: string, limit: number = 4000): string[] => {
@@ -343,7 +476,7 @@ const Clipper: React.FC = () => {
 
             const client = new WriteathonClient(data.token, data.userId);
 
-            if (mode === 'page' || mode === 'link') {
+            if (mode === 'article') {
                 setMessage('正在处理图片...');
                 // 1. Process Images
                 const finalContent = await processContentImages(content);
@@ -354,11 +487,10 @@ const Clipper: React.FC = () => {
 
                 // 3. Create First Card
                 let firstChunk = chunks[0];
-                if (mode === 'link') firstChunk = `> [${title}](${url})\n\n` + firstChunk;
-                if (mode === 'page') firstChunk = firstChunk + `\n\n> 来源: [${title}](${url})`;
+                firstChunk = firstChunk + `\n\n> 来源: [${title}](${url})`;
 
                 const res = await client.createCard({
-                    title: mode === 'link' ? `收藏链接: ${title}` : title,
+                    title: title,
                     content: firstChunk,
                     space: selectedSpace || undefined
                 });
@@ -431,52 +563,43 @@ const Clipper: React.FC = () => {
                 {/* Mode Switcher - Pill Style */}
                 <div className="flex p-0.5 bg-gray-100/80 rounded-lg">
                     <button
-                        onClick={() => setMode('page')}
-                        className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'page'
+                        onClick={() => setMode('article')}
+                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'article'
                             ? 'bg-white text-teal-600 shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
                         <FileText className="h-3 w-3" />
-                        全文
-                    </button>
-                    <button
-                        onClick={() => setMode('link')}
-                        className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'link'
-                            ? 'bg-white text-teal-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        <LinkIcon className="h-3 w-3" />
-                        链接
+                        全文剪藏
                     </button>
                     <button
                         onClick={() => setMode('image')}
-                        className={`px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'image'
+                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'image'
                             ? 'bg-white text-teal-600 shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                             }`}
                     >
                         <ImageIcon className="h-3 w-3" />
-                        图片
+                        图片提取
                     </button>
                 </div>
 
                 {/* Right Side: Refresh & Space */}
                 <div className="flex items-center gap-1">
-                    <button
+                    {/* Refresh button is now inside the URL input for article mode */}
+                    {/* <button
                         onClick={handleRefresh}
                         className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                         title="刷新内容"
                     >
                         <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
-                    </button>
+                    </button> */}
 
                     <div className="relative group">
                         <select
                             value={selectedSpace}
                             onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="bg-transparent font-medium text-xs text-gray-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 pl-1 appearance-none text-right max-w-[80px] truncate"
+                            className="bg-transparent font-medium text-xs text-gray-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 pl-1 appearance-none text-right max-w-[100px] truncate"
                         >
                             {spaces.map((space) => (
                                 <option key={space._id || space.id} value={space._id || space.id}>
@@ -491,9 +614,10 @@ const Clipper: React.FC = () => {
 
             {/* Main Content Area */}
             <div className="flex-1 overflow-y-auto bg-gray-50/30">
-                {mode === 'page' && (
+                {mode === 'article' && (
                     <div className="p-5 space-y-4 max-w-2xl mx-auto">
-                        <div className="relative">
+                        <div className="relative space-y-2">
+                            {/* Title Input */}
                             <input
                                 type="text"
                                 value={title}
@@ -501,41 +625,36 @@ const Clipper: React.FC = () => {
                                 className="w-full text-base font-bold text-gray-800 bg-transparent border-none placeholder-gray-300 focus:ring-0 p-0"
                                 placeholder="标题..."
                             />
+
+                            {/* URL Input */}
+                            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-100 px-3 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-teal-100">
+                                <Globe className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" />
+                                <input
+                                    type="text"
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                    className="flex-1 text-xs text-gray-500 bg-transparent border-none focus:ring-0 p-0 placeholder-gray-300"
+                                    placeholder="https://..."
+                                />
+                                <button
+                                    onClick={handleRefresh}
+                                    title="刷新/解析链接内容"
+                                    className="text-gray-300 hover:text-teal-600 transition-colors"
+                                >
+                                    <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
+                                </button>
+                            </div>
                         </div>
+
                         <div className="relative group">
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
                                 className="w-full h-[360px] text-sm leading-7 text-gray-600 bg-white border border-gray-100 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin outline-none"
-                                placeholder="页面内容..."
+                                placeholder="内容将显示在这里..."
                             />
                             <div className="absolute bottom-4 right-4 text-[10px] text-gray-300 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-gray-100">
                                 {content.length} 字
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {mode === 'link' && (
-                    <div className="p-5 h-full flex flex-col items-center justify-center">
-                        <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-100 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.1)] overflow-hidden">
-                            <div className="h-24 bg-gradient-to-br from-teal-50 to-emerald-50 flex items-center justify-center">
-                                <LinkIcon className="h-8 w-8 text-teal-200" />
-                            </div>
-                            <div className="p-5 space-y-3">
-                                <h3 className="text-sm font-bold text-gray-800 line-clamp-2 leading-tight">
-                                    {title}
-                                </h3>
-                                <div className="text-xs text-blue-500 flex items-center gap-1 bg-blue-50 w-fit px-2 py-1 rounded-md">
-                                    <ExternalLink className="h-3 w-3" />
-                                    <span className="truncate max-w-[200px]">{url}</span>
-                                </div>
-                                <textarea
-                                    value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    placeholder="添加备注 (可选)..."
-                                    className="w-full text-xs text-gray-600 bg-gray-50/50 border border-gray-100 rounded-lg p-3 focus:outline-none focus:border-teal-200 resize-none h-20 mt-2"
-                                />
                             </div>
                         </div>
                     </div>
@@ -551,6 +670,7 @@ const Clipper: React.FC = () => {
                             <div className="flex flex-col items-center justify-center h-64 text-gray-300">
                                 <ImageIcon className="h-8 w-8 opacity-20 mb-2" />
                                 <span className="text-xs">未找到大图</span>
+                                <button onClick={scrapeImages} className="mt-2 text-xs text-teal-600 hover:underline">刷新重试</button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-1 pb-20">
