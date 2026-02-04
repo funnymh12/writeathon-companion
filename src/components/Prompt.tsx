@@ -52,12 +52,12 @@ const PromptCard: React.FC<PromptCardProps> = ({
 
     return (
         <div
-            className={`group bg-white rounded-xl border transition-all duration-300 overflow-hidden ${isExpanded
-                ? 'border-teal-400 shadow-md ring-1 ring-teal-100'
-                : 'border-gray-100 hover:border-teal-200 hover:shadow-sm'
+            className={`group bg-white/60 backdrop-blur-sm rounded-2xl border transition-all duration-300 overflow-hidden ${isExpanded
+                ? 'border-teal-400 shadow-lg shadow-teal-500/10 ring-1 ring-teal-100'
+                : 'border-white/40 hover:border-white hover:shadow-md hover:-translate-y-0.5'
                 }`}
         >
-            <div className="p-3.5">
+            <div className="p-4">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onToggleExpand(id)}>
                         <h3 className="font-semibold text-gray-800 text-[13px] leading-tight truncate group-hover:text-teal-600 transition-colors">
@@ -112,10 +112,10 @@ const PromptCard: React.FC<PromptCardProps> = ({
                 </div>
 
                 {/* 展开的详情内容 */}
-                <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-3 pt-3 border-t border-gray-50' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-3 pt-3 border-t border-slate-100/50' : 'grid-rows-[0fr] opacity-0'}`}>
                     <div className="overflow-hidden">
-                        <div className="bg-gray-50 rounded-lg p-3 relative group/content">
-                            <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto scrollbar-thin">
+                        <div className="bg-white/50 rounded-xl p-3 relative group/content border border-white/40">
+                            <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto scrollbar-thin">
                                 {content}
                             </p>
                             <div className="mt-3">
@@ -463,9 +463,9 @@ const Prompt: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
+        <div className="flex flex-col h-full bg-transparent relative overflow-hidden">
             {/* Header Area */}
-            <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100 shadow-sm sticky top-0 z-30">
+            <div className="glass px-4 pt-4 pb-3 sticky top-0 z-30">
                 <div className="flex items-center justify-between mb-4">
                     <button
                         type="button"
@@ -492,13 +492,13 @@ const Prompt: React.FC = () => {
                 {/* Search & New */}
                 <div className="flex gap-2">
                     <div className="flex-1 relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 group-focus-within:text-teal-500 transition-colors" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-teal-500 transition-colors" />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="寻找你的灵感..."
-                            className="w-full h-10 pl-10 pr-4 rounded-xl border-transparent bg-gray-100 text-[13px] focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all"
+                            className="w-full h-10 pl-10 pr-4 rounded-xl border-transparent bg-slate-100/50 text-[13px] focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 outline-none transition-all placeholder:text-slate-400"
                         />
                     </div>
                     <button
@@ -616,9 +616,9 @@ const Prompt: React.FC = () => {
 
             {/* Editor Overlay */}
             {showEditor && (
-                <div className="absolute inset-0 bg-white z-[60] flex flex-col animate-in slide-in-from-bottom-full duration-300">
-                    <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
-                        <h3 className="text-lg font-black text-gray-800">创作新 Prompt</h3>
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-[60] flex flex-col animate-in slide-in-from-bottom-full duration-300">
+                    <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100/50">
+                        <h3 className="text-lg font-black text-slate-800">创作新 Prompt</h3>
                         <button
                             type="button"
                             onClick={() => setShowEditor(false)}

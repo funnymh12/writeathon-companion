@@ -559,9 +559,9 @@ const Clipper: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white relative">
+        <div className="flex flex-col h-full bg-transparent relative">
             {/* Top Bar: Space & Mode */}
-            <div className="px-4 py-3 flex items-center justify-between bg-white z-10 border-b border-gray-50/50">
+            <div className="px-4 py-3 flex items-center justify-between glass z-10 sticky top-0">
                 {/* Mode Switcher - Pill Style */}
                 <div className="flex p-0.5 bg-gray-100/80 rounded-lg">
                     <button
@@ -601,7 +601,7 @@ const Clipper: React.FC = () => {
                         <select
                             value={selectedSpace}
                             onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="bg-transparent font-medium text-xs text-gray-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 pl-1 appearance-none text-right max-w-[100px] truncate"
+                            className="bg-transparent font-medium text-xs text-slate-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 pl-1 appearance-none text-right max-w-[100px] truncate"
                         >
                             {spaces.map((space) => (
                                 <option key={space._id || space.id} value={space._id || space.id}>
@@ -615,7 +615,7 @@ const Clipper: React.FC = () => {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto bg-gray-50/30">
+            <div className="flex-1 overflow-y-auto">
                 {mode === 'article' && (
                     <div className="p-5 space-y-4 max-w-2xl mx-auto">
                         <div className="relative space-y-2">
@@ -624,24 +624,24 @@ const Clipper: React.FC = () => {
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full text-base font-bold text-gray-800 bg-transparent border-none placeholder-gray-300 focus:ring-0 p-0"
+                                className="w-full text-base font-bold text-slate-800 bg-transparent border-none placeholder:text-slate-300 focus:ring-0 p-0"
                                 placeholder="标题..."
                             />
 
                             {/* URL Input */}
-                            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-100 px-3 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-teal-100">
-                                <Globe className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" />
+                            <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm rounded-xl border border-white/60 px-3 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-teal-100">
+                                <Globe className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                                 <input
                                     type="text"
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
-                                    className="flex-1 text-xs text-gray-500 bg-transparent border-none focus:ring-0 p-0 placeholder-gray-300"
+                                    className="flex-1 text-xs text-slate-500 bg-transparent border-none focus:ring-0 p-0 placeholder:text-slate-400"
                                     placeholder="https://..."
                                 />
                                 <button
                                     onClick={handleRefresh}
                                     title="刷新/解析链接内容"
-                                    className="text-gray-300 hover:text-teal-600 transition-colors"
+                                    className="text-slate-400 hover:text-teal-600 transition-colors"
                                 >
                                     <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
                                 </button>
@@ -652,14 +652,14 @@ const Clipper: React.FC = () => {
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
-                                className="w-full h-[360px] text-sm leading-7 text-gray-600 bg-white border border-gray-100 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin outline-none"
+                                className="w-full h-[360px] text-sm leading-7 text-slate-600 bg-white/60 backdrop-blur-sm border border-white/60 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin outline-none"
                                 placeholder="内容将显示在这里..."
                             />
                             <div className="absolute bottom-4 right-4 flex items-center gap-3">
                                 <span className="text-[10px] text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-100 font-bold">
                                     预计 {estimatedCards} 张卡片
                                 </span>
-                                <span className="text-[10px] text-gray-400 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-gray-100">
+                                <span className="text-[10px] text-slate-400 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-white/60">
                                     {content.length} 字
                                 </span>
                             </div>
@@ -717,8 +717,8 @@ const Clipper: React.FC = () => {
             </div>
 
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 border-t border-gray-50 flex items-center justify-between bg-white z-20">
-                <div className="text-[10px] text-gray-400 font-medium">
+            <div className="px-5 py-4 glass flex items-center justify-between z-20 sticky bottom-0 border-t-0 bg-white/60">
+                <div className="text-[10px] text-slate-400 font-medium">
                     {status === 'error' ? (
                         <span className="text-red-500 flex items-center gap-1.5">
                             <X className="h-3 w-3" /> {message || '保存失败'}
