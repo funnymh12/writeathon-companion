@@ -11,10 +11,10 @@ const createTurndownService = () => {
     });
 
     service.addRule('removeEmpty', {
-        filter: ['strong', 'b', 'em', 'i', 'a', 'p'],
-        replacement: function (content) {
-            return content.trim() === '' ? '' : content;
-        }
+        filter: function (node) {
+            return ['STRONG', 'B', 'EM', 'I', 'A', 'P'].includes(node.nodeName) && node.textContent?.trim() === '';
+        },
+        replacement: () => ''
     });
 
     service.addRule('removeScripts', {

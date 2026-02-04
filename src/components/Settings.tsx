@@ -152,20 +152,20 @@ const Settings: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50/50">
+        <div className="flex flex-col h-full bg-background">
             {/* Header */}
-            <div className="px-6 py-5 border-b border-gray-100 bg-white sticky top-0 z-10 flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-border/50 bg-card sticky top-0 z-10 flex items-center justify-between">
                 <div>
-                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <SettingsIcon className="h-5 w-5 text-teal-600" />
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                        <SettingsIcon className="h-5 w-5 text-primary" />
                         设置
                     </h2>
-                    <p className="text-xs text-gray-400 mt-1">配置账号与服务</p>
+                    <p className="text-xs text-muted-foreground mt-1">配置账号与服务</p>
                 </div>
                 {token && (
-                    <div className="flex items-center gap-2 bg-teal-50 px-3 py-1.5 rounded-full">
-                        <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
-                        <span className="text-xs font-medium text-teal-700">Token 已设置</span>
+                    <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-full">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                        <span className="text-xs font-medium text-primary">Token 已设置</span>
                     </div>
                 )}
             </div>
@@ -174,43 +174,43 @@ const Settings: React.FC = () => {
 
                 {/* 1. Account Section */}
                 <section className="space-y-4">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <User className="h-3.5 w-3.5" /> 账号设定
                     </h3>
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <div className="bg-card p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">Writeathon Token</label>
+                            <label className="text-sm font-medium text-foreground">Writeathon Token</label>
                             <div className="relative">
                                 <input
                                     type={showToken ? "text" : "password"}
                                     value={token}
                                     onChange={(e) => setToken(e.target.value)}
                                     placeholder="请输入你的 Access Token"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowToken(!showToken)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                 >
                                     {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                             </div>
-                            <p className="text-[10px] text-gray-400">
-                                在 <a href="https://writeathon.cn/profile/api" target="_blank" className="text-teal-600 hover:underline">Writeathon API设置</a> 中获取
+                            <p className="text-[10px] text-muted-foreground">
+                                在 <a href="https://writeathon.cn/profile/api" target="_blank" className="text-primary hover:underline">Writeathon API设置</a> 中获取
                             </p>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">服务器地址 (Base URL)</label>
+                            <label className="text-sm font-medium text-foreground">服务器地址 (Base URL)</label>
                             <div className="relative">
-                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <input
                                     type="text"
                                     value={baseUrl}
                                     onChange={(e) => setBaseUrl(e.target.value)}
                                     placeholder="默认: https://writeathon.cn"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                    className="w-full bg-muted/50 border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50"
                                 />
                             </div>
                         </div>
@@ -219,20 +219,20 @@ const Settings: React.FC = () => {
 
                 {/* 2. AI Section */}
                 <section className="space-y-4">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <Bot className="h-3.5 w-3.5" />
                         AI 模型配置
                     </h3>
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <div className="bg-card p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
 
-                        <div className="grid grid-cols-3 gap-2 p-1 bg-gray-50 rounded-xl">
+                        <div className="grid grid-cols-3 gap-2 p-1 bg-muted/50 rounded-xl">
                             {['gemini', 'openai', 'custom'].map((p) => (
                                 <button
                                     key={p}
                                     onClick={() => setAiProvider(p as any)}
                                     className={`py-2 text-xs font-bold rounded-lg transition-all capitalize ${aiProvider === p
-                                        ? 'bg-white text-indigo-600 shadow-sm'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                        ? 'bg-card text-primary shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
                                     {p}
@@ -241,46 +241,46 @@ const Settings: React.FC = () => {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">API Key</label>
+                            <label className="text-sm font-medium text-foreground">API Key</label>
                             <div className="relative">
-                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <input
                                     type="password"
                                     value={aiApiKey}
                                     onChange={(e) => setAiApiKey(e.target.value)}
                                     placeholder={`${aiProvider === 'gemini' ? 'Google AI' : 'OpenAI'} API Key`}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-gray-400"
+                                    className="w-full bg-muted/50 border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50"
                                 />
                             </div>
                         </div>
 
                         {aiProvider !== 'gemini' && (
                             <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
-                                <label className="text-sm font-medium text-gray-700">API Link / Base URL</label>
+                                <label className="text-sm font-medium text-foreground">API Link / Base URL</label>
                                 <input
                                     type="text"
                                     value={aiBaseUrl}
                                     onChange={(e) => setAiBaseUrl(e.target.value)}
                                     placeholder={aiProvider === 'openai' ? "https://api.openai.com/v1" : "Custom API URL"}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-gray-400 font-mono"
+                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50 font-mono"
                                 />
                             </div>
                         )}
 
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">模型名称</label>
+                            <label className="text-sm font-medium text-foreground">模型名称</label>
                             {aiProvider === 'gemini' ? (
                                 <div className="relative">
                                     <select
                                         value={aiModel}
                                         onChange={(e) => setAiModel(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-gray-700 appearance-none cursor-pointer"
+                                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground appearance-none cursor-pointer"
                                     >
                                         <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Recommended)</option>
                                         <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                                         <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
                                     </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
                             ) : (
                                 <input
@@ -288,7 +288,7 @@ const Settings: React.FC = () => {
                                     value={aiModel}
                                     onChange={(e) => setAiModel(e.target.value)}
                                     placeholder="gpt-4o, claude-3-5-sonnet..."
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-gray-400"
+                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50"
                                 />
                             )}
                         </div>
@@ -297,18 +297,18 @@ const Settings: React.FC = () => {
 
                 {/* 3. Image Hosting */}
                 <section className="space-y-4">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <User className="h-3.5 w-3.5" /> 图片服务
                     </h3>
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                        <div className="grid grid-cols-2 gap-2 p-1 bg-gray-50 rounded-xl mb-4">
+                    <div className="bg-card p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
+                        <div className="grid grid-cols-2 gap-2 p-1 bg-muted/50 rounded-xl mb-4">
                             {(['imgbb', 'qiniu'] as const).map((p) => (
                                 <button
                                     key={p}
                                     onClick={() => setImageProvider(p)}
                                     className={`py-2 text-xs font-bold rounded-lg transition-all capitalize ${imageProvider === p
-                                        ? 'bg-white text-teal-600 shadow-sm'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                        ? 'bg-card text-primary shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
                                     {p === 'imgbb' ? 'ImgBB' : '七牛云'}
@@ -318,56 +318,56 @@ const Settings: React.FC = () => {
 
                         {imageProvider === 'imgbb' ? (
                             <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
-                                <label className="text-sm font-medium text-gray-700 flex justify-between">
+                                <label className="text-sm font-medium text-foreground flex justify-between">
                                     ImgBB API Key
-                                    <a href="https://api.imgbb.com/" target="_blank" className="text-xs text-teal-600 hover:underline font-normal">获取 Key</a>
+                                    <a href="https://api.imgbb.com/" target="_blank" className="text-xs text-primary hover:underline font-normal">获取 Key</a>
                                 </label>
                                 <input
                                     type="password"
                                     value={imgbbApiKey}
                                     onChange={(e) => setImgbbApiKey(e.target.value)}
                                     placeholder="用于绕过图片防盗链 (可选)"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50"
                                 />
-                                <p className="text-[10px] text-gray-400">如果不填，将使用默认 Key（可能会有额度限制）</p>
+                                <p className="text-[10px] text-muted-foreground">如果不填，将使用默认 Key（可能会有额度限制）</p>
                             </div>
                         ) : (
                             <div className="space-y-3 animate-in fade-in slide-in-from-top-1">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-gray-700">Access Key (AK)</label>
+                                    <label className="text-sm font-medium text-foreground">Access Key (AK)</label>
                                     <input
                                         type="password"
                                         value={qiniuAk}
                                         onChange={(e) => setQiniuAk(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-gray-700">Secret Key (SK)</label>
+                                    <label className="text-sm font-medium text-foreground">Secret Key (SK)</label>
                                     <input
                                         type="password"
                                         value={qiniuSk}
                                         onChange={(e) => setQiniuSk(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-gray-700">Bucket Name</label>
+                                        <label className="text-sm font-medium text-foreground">Bucket Name</label>
                                         <input
                                             type="text"
                                             value={qiniuBucket}
                                             onChange={(e) => setQiniuBucket(e.target.value)}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                            className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-gray-700">Region</label>
+                                        <label className="text-sm font-medium text-foreground">Region</label>
                                         <div className="relative">
                                             <select
                                                 value={qiniuRegion}
                                                 onChange={(e) => setQiniuRegion(e.target.value)}
-                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-gray-700 appearance-none cursor-pointer"
+                                                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground appearance-none cursor-pointer"
                                             >
                                                 <option value="z0">华东 (z0)</option>
                                                 <option value="z1">华北 (z1)</option>
@@ -375,18 +375,18 @@ const Settings: React.FC = () => {
                                                 <option value="na0">北美 (na0)</option>
                                                 <option value="as0">东南亚 (as0)</option>
                                             </select>
-                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-gray-700">Domain (CDN 域名)</label>
+                                    <label className="text-sm font-medium text-foreground">Domain (CDN 域名)</label>
                                     <input
                                         type="text"
                                         value={qiniuDomain}
                                         onChange={(e) => setQiniuDomain(e.target.value)}
                                         placeholder="e.g. https://img.example.com"
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50"
                                     />
                                 </div>
                             </div>
@@ -396,10 +396,10 @@ const Settings: React.FC = () => {
 
                 {/* 4. Module Management */}
                 <section className="space-y-4">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <Command className="h-3.5 w-3.5" /> 功能开关
                     </h3>
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-2">
+                    <div className="bg-card p-5 rounded-2xl border border-border/50 shadow-sm space-y-2">
                         <ModuleToggle
                             icon={<Notebook className="h-4 w-4" />}
                             label="速记"
@@ -440,18 +440,18 @@ const Settings: React.FC = () => {
 
                 {/* 4. Shortcuts Hint */}
                 <section className="space-y-4 pb-12">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <Command className="h-3.5 w-3.5" /> 快捷键
                     </h3>
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <div className="bg-card p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">发送选中文本 (全局)</label>
+                            <label className="text-sm font-medium text-foreground">发送选中文本 (全局)</label>
                             <input
                                 type="text"
                                 value={globalClipShortcut}
                                 onChange={(e) => setGlobalClipShortcut(e.target.value)}
                                 placeholder="例如: Alt+S"
-                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
                                 onKeyDown={(e) => {
                                     e.preventDefault();
                                     const shortcut = getShortcutString(e);
@@ -460,13 +460,13 @@ const Settings: React.FC = () => {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">唤起速记模块 (全局)</label>
+                            <label className="text-sm font-medium text-foreground">唤起速记模块 (全局)</label>
                             <input
                                 type="text"
                                 value={openMemoShortcut}
                                 onChange={(e) => setOpenMemoShortcut(e.target.value)}
                                 placeholder="例如: Alt+M"
-                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
                                 onKeyDown={(e) => {
                                     e.preventDefault();
                                     const shortcut = getShortcutString(e);
@@ -475,13 +475,13 @@ const Settings: React.FC = () => {
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-medium text-gray-700">快速发送 Memo (应用内)</label>
+                            <label className="text-sm font-medium text-foreground">快速发送 Memo (应用内)</label>
                             <input
                                 type="text"
                                 value={quickSendShortcut}
                                 onChange={(e) => setQuickSendShortcut(e.target.value)}
                                 placeholder="例如: Ctrl+Enter"
-                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
                                 onKeyDown={(e) => {
                                     e.preventDefault();
                                     const shortcut = getShortcutString(e);
@@ -494,11 +494,11 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Footer Actions */}
-            <div className="px-6 py-4 bg-white border-t border-gray-50 flex items-center justify-between z-20">
+            <div className="px-6 py-4 bg-card border-t border-border/50 flex items-center justify-between z-20">
                 {token && (
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition-colors text-sm font-medium px-2 py-1"
+                        className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors text-sm font-medium px-2 py-1"
                     >
                         <LogOut className="h-4 w-4" />
                         <span>退出</span>
@@ -507,7 +507,7 @@ const Settings: React.FC = () => {
 
                 <div className="flex items-center gap-4 ml-auto">
                     {status && (
-                        <span className={`text-xs font-bold animate-in fade-in flex items-center gap-1.5 ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                        <span className={`text-xs font-bold animate-in fade-in flex items-center gap-1.5 ${status === 'success' ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
                             {status === 'success' ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
                             {statusMsg}
                         </span>
@@ -516,7 +516,7 @@ const Settings: React.FC = () => {
                     <button
                         onClick={handleSave}
                         disabled={loading}
-                        className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-8 py-2.5 rounded-full font-bold text-sm shadow-md shadow-teal-200 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-2.5 rounded-full font-bold text-sm shadow-md shadow-primary/30 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         <span>保存设置</span>
@@ -555,17 +555,17 @@ const getShortcutString = (event: React.KeyboardEvent | KeyboardEvent) => {
 const ModuleToggle = ({ icon, label, description, enabled, onChange }: { icon: React.ReactNode, label: string, description: string, enabled: boolean, onChange: (val: boolean) => void }) => (
     <div className="flex items-center justify-between py-3 group">
         <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl transition-colors ${enabled ? 'bg-teal-50 text-teal-600' : 'bg-gray-50 text-gray-400'}`}>
+            <div className={`p-2 rounded-xl transition-colors ${enabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                 {icon}
             </div>
             <div>
-                <p className={`text-sm font-bold ${enabled ? 'text-gray-800' : 'text-gray-400'}`}>{label}</p>
-                <p className="text-[10px] text-gray-400">{description}</p>
+                <p className={`text-sm font-bold ${enabled ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</p>
+                <p className="text-[10px] text-muted-foreground">{description}</p>
             </div>
         </div>
         <button
             onClick={() => onChange(!enabled)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ring-2 ring-transparent focus:ring-teal-500/10 ${enabled ? 'bg-teal-500' : 'bg-gray-200'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ring-2 ring-transparent focus:ring-primary/10 ${enabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
         >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>

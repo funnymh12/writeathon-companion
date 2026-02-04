@@ -84,17 +84,17 @@ function App() {
     }
 
     return (
-        <div className="flex h-screen flex-col font-sans text-gray-900 overflow-hidden relative selection:bg-cyan-100 selection:text-cyan-900 bg-[#FAFAFA] isolate">
+        <div className="flex h-screen flex-col font-sans text-foreground overflow-hidden relative selection:bg-primary/20 selection:text-primary bg-background isolate">
             {/* 🍃 Zen Background Layer */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                {/* Subtle Light Source (Top Right) - Static & Gentle */}
-                <div className="absolute top-0 right-0 w-[100%] h-[80%] bg-gradient-to-bl from-teal-50/40 via-transparent to-transparent opacity-80" />
+                {/* Subtle Light Source (Top Right) */}
+                <div className="absolute top-0 right-0 w-[100%] h-[80%] bg-gradient-to-bl from-primary/5 via-transparent to-transparent opacity-80" />
 
                 {/* Ambient Warmth (Bottom Left) */}
-                <div className="absolute bottom-0 left-0 w-[80%] h-[60%] bg-gradient-to-tr from-slate-100/50 via-gray-50/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 w-[80%] h-[60%] bg-gradient-to-tr from-muted/50 via-background to-transparent" />
 
-                {/* Paper Texture Noise */}
-                <div className="absolute inset-0 opacity-[0.015] bg-repeat mix-blend-multiply" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+                {/* Paper Texture Noise - Opacity reduced in dark mode via CSS mix-blend-overlay if needed, or keep low */}
+                <div className="absolute inset-0 opacity-[0.015] bg-repeat mix-blend-multiply dark:mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
             </div>
 
             {/* Header - Glass Effect */}
@@ -103,24 +103,24 @@ function App() {
                     {activeTab === 'settings' && isAuth ? (
                         <button
                             onClick={handleBack}
-                            className="p-1.5 -ml-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50/50 rounded-xl transition-all hover-lift"
+                            className="p-1.5 -ml-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all hover-lift"
                         >
                             <ChevronLeft className="h-5 w-5" />
                         </button>
                     ) : (
                         <div className="group relative">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-teal-400 to-emerald-400 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-200" />
-                            <div className="relative w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20 ring-1 ring-white/50">
-                                <PenTool className="h-4 w-4 text-white drop-shadow-sm" />
+                            <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-emerald-400/50 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-200" />
+                            <div className="relative w-8 h-8 bg-gradient-to-br from-primary to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 ring-1 ring-white/20">
+                                <PenTool className="h-4 w-4 text-primary-foreground drop-shadow-sm" />
                             </div>
                         </div>
                     )}
 
                     <div className="flex flex-col">
                         {activeTab === 'settings' ? (
-                            <span className="font-bold text-base text-slate-800 tracking-tight">设置</span>
+                            <span className="font-bold text-base text-foreground tracking-tight">设置</span>
                         ) : (
-                            <span className="font-bold text-base bg-gradient-to-br from-slate-800 to-slate-600 bg-clip-text text-transparent tracking-tight">
+                            <span className="font-bold text-base bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent tracking-tight">
                                 写拉松
                             </span>
                         )}
@@ -130,7 +130,7 @@ function App() {
                 {isAuth && activeTab !== 'settings' && (
                     <button
                         onClick={() => handleTabChange('settings')}
-                        className="rounded-full p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100/50 transition-all active:scale-95"
+                        className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all active:scale-95"
                     >
                         <SettingsIcon className="h-5 w-5" strokeWidth={1.5} />
                     </button>
@@ -201,12 +201,12 @@ function NavButton({ active, onClick, icon, label, visible }: { active: boolean;
             className={`
                 relative flex flex-col items-center justify-center gap-1.5 w-full h-full 
                 transition-all duration-300 group
-                ${active ? 'text-teal-600' : 'text-slate-400 hover:text-slate-600'}
+                ${active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}
             `}
         >
             <div className={`
                 relative z-10 p-1 rounded-xl transition-all duration-500 ease-out
-                ${active ? 'bg-teal-50/50 -translate-y-1' : 'group-hover:bg-slate-50 group-hover:-translate-y-0.5'}
+                ${active ? 'bg-primary/10 -translate-y-1' : 'group-hover:bg-muted/50 group-hover:-translate-y-0.5'}
             `}>
                 {icon}
             </div>
@@ -220,12 +220,12 @@ function NavButton({ active, onClick, icon, label, visible }: { active: boolean;
 
             {/* Active Glow Indicator */}
             {active && (
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-8 bg-teal-400/20 blur-xl rounded-full" />
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary/20 blur-xl rounded-full" />
             )}
 
             {/* Bottom active pill */}
             {active && (
-                <div className="absolute bottom-1 w-1 h-1 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.5)] animate-in fade-in zoom-in duration-300" />
+                <div className="absolute bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_8px_hsl(var(--primary)/0.5)] animate-in fade-in zoom-in duration-300" />
             )}
         </button>
     );

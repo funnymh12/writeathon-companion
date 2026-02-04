@@ -563,12 +563,12 @@ const Clipper: React.FC = () => {
             {/* Top Bar: Space & Mode */}
             <div className="px-4 py-3 flex items-center justify-between glass z-10">
                 {/* Mode Switcher - Pill Style */}
-                <div className="flex p-0.5 bg-gray-100/80 rounded-lg">
+                <div className="flex p-0.5 bg-muted/80 rounded-lg">
                     <button
                         onClick={() => setMode('article')}
                         className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'article'
-                            ? 'bg-white text-teal-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
+                            ? 'bg-card text-primary shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
                         <FileText className="h-3 w-3" />
@@ -577,8 +577,8 @@ const Clipper: React.FC = () => {
                     <button
                         onClick={() => setMode('image')}
                         className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'image'
-                            ? 'bg-white text-teal-600 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600'
+                            ? 'bg-card text-primary shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
                         <ImageIcon className="h-3 w-3" />
@@ -588,28 +588,19 @@ const Clipper: React.FC = () => {
 
                 {/* Right Side: Refresh & Space */}
                 <div className="flex items-center gap-1">
-                    {/* Refresh button is now inside the URL input for article mode */}
-                    {/* <button
-                        onClick={handleRefresh}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                        title="刷新内容"
-                    >
-                        <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
-                    </button> */}
-
                     <div className="relative flex items-center">
                         <select
                             value={selectedSpace}
                             onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="appearance-none bg-teal-50/50 hover:bg-teal-100/50 border border-teal-100/50 rounded-xl px-3 py-1.5 text-[11px] font-bold text-teal-700 cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-300/50 max-w-[120px] truncate"
+                            className="appearance-none bg-primary/10 hover:bg-primary/20 border border-primary/10 rounded-xl px-3 py-1.5 text-[11px] font-bold text-primary cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 max-w-[120px] truncate"
                         >
                             {spaces.map((space) => (
-                                <option key={space._id || space.id} value={space._id || space.id}>
+                                <option key={space._id || space.id} value={space._id || space.id} className="bg-background text-foreground">
                                     {space.title}
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-2.5 h-3.5 w-3.5 text-teal-600 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 h-3.5 w-3.5 text-primary pointer-events-none" />
                     </div>
                 </div>
             </div>
@@ -624,24 +615,24 @@ const Clipper: React.FC = () => {
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full text-base font-bold text-slate-800 bg-transparent border-none placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500/20 rounded-lg px-2 py-1 -ml-2 transition-all"
+                                className="w-full text-base font-bold text-foreground bg-transparent border-none placeholder:text-muted-foreground/50 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 rounded-lg px-2 py-1 -ml-2 transition-all"
                                 placeholder="标题..."
                             />
 
                             {/* URL Input */}
-                            <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm rounded-xl border border-white/60 px-3 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-teal-500/10 focus-within:border-teal-500/50">
-                                <Globe className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <div className="flex items-center gap-2 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 px-3 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/50">
+                                <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                                 <input
                                     type="text"
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
-                                    className="flex-1 text-xs text-slate-500 bg-transparent border-none outline-none focus:ring-0 p-0 placeholder:text-slate-400"
+                                    className="flex-1 text-xs text-muted-foreground bg-transparent border-none outline-none focus:ring-0 p-0 placeholder:text-muted-foreground/50"
                                     placeholder="https://..."
                                 />
                                 <button
                                     onClick={handleRefresh}
                                     title="刷新/解析链接内容"
-                                    className="text-slate-400 hover:text-teal-600 transition-colors"
+                                    className="text-muted-foreground hover:text-primary transition-colors"
                                 >
                                     <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
                                 </button>
@@ -652,14 +643,14 @@ const Clipper: React.FC = () => {
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
-                                className="w-full h-[360px] text-sm leading-7 text-slate-600 bg-white/60 backdrop-blur-sm border border-white/60 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin outline-none"
+                                className="w-full h-[360px] text-sm leading-7 text-muted-foreground bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-4 focus:ring-1 focus:ring-primary/20 focus:border-primary/30 resize-none font-serif shadow-sm scrollbar-thin outline-none"
                                 placeholder="内容将显示在这里..."
                             />
                             <div className="absolute bottom-4 right-4 flex items-center gap-3">
-                                <span className="text-[10px] text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-100 font-bold">
+                                <span className="text-[10px] text-primary bg-primary/10 px-2 py-1 rounded-full border border-primary/20 font-bold">
                                     预计 {estimatedCards} 张卡片
                                 </span>
-                                <span className="text-[10px] text-slate-400 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-white/60">
+                                <span className="text-[10px] text-muted-foreground bg-card/80 backdrop-blur px-2 py-1 rounded-full border border-border/60">
                                     {content.length} 字
                                 </span>
                             </div>
@@ -671,13 +662,13 @@ const Clipper: React.FC = () => {
                     <div className="p-1">
                         {status === 'loading' && images.length === 0 ? (
                             <div className="flex items-center justify-center h-64">
-                                <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
                             </div>
                         ) : images.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-gray-300">
+                            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground/30">
                                 <ImageIcon className="h-8 w-8 opacity-20 mb-2" />
                                 <span className="text-xs">未找到大图</span>
-                                <button onClick={scrapeImages} className="mt-2 text-xs text-teal-600 hover:underline">刷新重试</button>
+                                <button onClick={scrapeImages} className="mt-2 text-xs text-primary hover:underline">刷新重试</button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-1 pb-20">
@@ -686,8 +677,8 @@ const Clipper: React.FC = () => {
                                         key={idx}
                                         onClick={() => toggleImageSelection(img.src)}
                                         className={`relative group aspect-square cursor-pointer overflow-hidden rounded-lg transition-all border-2 ${selectedImages.has(img.src)
-                                            ? 'border-teal-500 filter-none'
-                                            : 'border-transparent border-white hover:border-teal-200'
+                                            ? 'border-primary filter-none'
+                                            : 'border-transparent hover:border-primary/30'
                                             }`}
                                     >
                                         <img
@@ -696,7 +687,7 @@ const Clipper: React.FC = () => {
                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
                                         />
-                                        <div className={`absolute top-2 right-2 rounded-full p-1 transition-all ${selectedImages.has(img.src) ? 'bg-teal-500 text-white shadow-md' : 'bg-black/20 text-white/50 group-hover:bg-black/40'}`}>
+                                        <div className={`absolute top-2 right-2 rounded-full p-1 transition-all ${selectedImages.has(img.src) ? 'bg-primary text-primary-foreground shadow-md' : 'bg-black/20 text-white/50 group-hover:bg-black/40'}`}>
                                             <Check className="h-3 w-3" />
                                         </div>
                                         <button
@@ -717,14 +708,14 @@ const Clipper: React.FC = () => {
             </div>
 
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 glass flex items-center justify-between z-20 border-t-0 bg-white/60 mt-auto">
-                <div className="text-[10px] text-slate-400 font-medium">
+            <div className="px-5 py-4 glass flex items-center justify-between z-20 border-t-0 mt-auto">
+                <div className="text-[10px] text-muted-foreground font-medium">
                     {status === 'error' ? (
-                        <span className="text-red-500 flex items-center gap-1.5">
+                        <span className="text-destructive flex items-center gap-1.5">
                             <X className="h-3 w-3" /> {message || '保存失败'}
                         </span>
                     ) : status === 'success' ? (
-                        <span className="text-green-600 flex items-center gap-1.5">
+                        <span className="text-green-600 dark:text-green-400 flex items-center gap-1.5">
                             <CheckCircle2 className="h-3 w-3" /> 保存成功
                         </span>
                     ) : mode === 'image' ? (
@@ -738,8 +729,8 @@ const Clipper: React.FC = () => {
                     onClick={handleSave}
                     disabled={status === 'loading' || (mode === 'image' && selectedImages.size === 0)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:shadow-none ${status === 'success'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-teal-500 hover:bg-teal-600 text-white shadow-teal-500/30'
+                        ? 'bg-green-500 text-white dark:bg-green-600'
+                        : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30'
                         }`}
                 >
                     {status === 'loading' ? (

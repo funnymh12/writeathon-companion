@@ -333,18 +333,18 @@ const Memo: React.FC = () => {
             {/* Top Bar: Space Selector */}
             <div className="px-5 py-3 flex items-center justify-between glass z-10">
                 <div className="flex items-center gap-2 group relative">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Storage</span>
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Storage</span>
                     <div className="relative flex items-center">
                         <select
                             value={selectedSpace}
                             onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="appearance-none bg-teal-50/50 hover:bg-teal-100/50 border border-teal-100/50 rounded-lg px-3 py-1 text-[11px] font-bold text-teal-700 cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-300/50"
+                            className="appearance-none bg-primary/10 hover:bg-primary/20 border border-primary/10 rounded-lg px-3 py-1 text-[11px] font-bold text-primary cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30"
                         >
                             {spaces.map(s => (
-                                <option key={s._id || s.id} value={s._id || s.id}>{s.title}</option>
+                                <option key={s._id || s.id} value={s._id || s.id} className="text-foreground bg-background">{s.title}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-teal-600 pointer-events-none" />
+                        <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-primary pointer-events-none" />
                     </div>
                 </div>
 
@@ -352,7 +352,7 @@ const Memo: React.FC = () => {
                 {!quote && (
                     <button
                         onClick={pasteFromClipboard}
-                        className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-medium"
+                        className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-medium"
                         title="从剪贴板粘贴引用"
                     >
                         <Clipboard className="h-3.5 w-3.5" />
@@ -362,25 +362,25 @@ const Memo: React.FC = () => {
             </div>
 
             {/* Main Scrollable Area */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-100">
+            <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-100 dark:scrollbar-thumb-gray-700">
                 <div className="space-y-6 min-h-full flex flex-col pb-20"> {/* pb-20 for safe scroll */}
 
                     {/* 1. Quote Block (Editable) */}
                     {quote && (
                         <div className="relative group animate-in slide-in-from-top-2 fade-in duration-300">
-                            <div className="p-1 bg-gradient-to-br from-indigo-50/50 to-purple-50/30 rounded-2xl border border-indigo-100/50 shadow-sm relative">
-                                <Quote className="h-4 w-4 text-indigo-300 absolute top-4 left-4 z-0 pointer-events-none" />
+                            <div className="p-1 bg-gradient-to-br from-accent/50 to-muted/50 rounded-2xl border border-border/50 shadow-sm relative">
+                                <Quote className="h-4 w-4 text-muted-foreground/30 absolute top-4 left-4 z-0 pointer-events-none" />
                                 <textarea
                                     ref={quoteRef}
                                     value={quote}
                                     onChange={(e) => setQuote(e.target.value)}
-                                    className="w-full bg-transparent border-none text-sm text-gray-600 leading-relaxed font-serif pl-10 pr-8 py-3 resize-none focus:ring-0 focus:outline-none placeholder-gray-400/50 min-h-[60px]"
+                                    className="w-full bg-transparent border-none text-sm text-muted-foreground leading-relaxed font-serif pl-10 pr-8 py-3 resize-none focus:ring-0 focus:outline-none placeholder-muted-foreground/40 min-h-[60px]"
                                     placeholder="引用内容..."
                                 />
                             </div>
                             <button
                                 onClick={clearQuote}
-                                className="absolute -top-2 -right-2 p-1.5 bg-white border border-gray-100 rounded-full shadow-sm text-gray-400 hover:text-red-500 hover:border-red-100 transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100 z-10"
+                                className="absolute -top-2 -right-2 p-1.5 bg-card border border-border rounded-full shadow-sm text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100 z-10"
                                 title="移除引用"
                             >
                                 <X className="h-3 w-3" />
@@ -396,7 +396,7 @@ const Memo: React.FC = () => {
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="w-full text-xl font-bold text-slate-900 placeholder:text-slate-300 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
+                            className="w-full text-xl font-bold text-foreground placeholder:text-muted-foreground/40 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
                         />
                         <div className="relative">
                             <textarea
@@ -406,11 +406,11 @@ const Memo: React.FC = () => {
                                 onChange={(e) => setContent(e.target.value)}
                                 onPaste={handlePaste}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none text-base leading-7 text-slate-700 placeholder:text-slate-300/70 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
+                                className="w-full resize-none text-base leading-7 text-foreground/90 placeholder:text-muted-foreground/40 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
                                 style={{ minHeight: '200px' }}
                             />
                             {uploadingImage && (
-                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur rounded-lg px-2 py-1 flex items-center gap-1.5 text-white text-[10px] animate-pulse">
+                                <div className="absolute top-2 right-2 bg-foreground/80 backdrop-blur rounded-lg px-2 py-1 flex items-center gap-1.5 text-background text-[10px] animate-pulse">
                                     <ImageIcon className="h-3 w-3" />
                                     <span>上传图片中...</span>
                                 </div>
@@ -422,20 +422,20 @@ const Memo: React.FC = () => {
 
             {/* Bottom Toolbar */}
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 flex items-center justify-between glass z-20 border-t-0 bg-white/60 mt-auto">
-                <div className="text-[10px] text-slate-400 flex items-center gap-2">
+            <div className="px-5 py-4 flex items-center justify-between glass z-20 border-t-0 mt-auto">
+                <div className="text-[10px] text-muted-foreground flex items-center gap-2">
                     {/* Status / Hints */}
                     {status === 'error' ? (
-                        <span className="text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="text-destructive font-medium bg-destructive/10 px-2 py-0.5 rounded-md flex items-center gap-1">
                             <X className="h-3 w-3" /> {error || '发送失败'}
                         </span>
                     ) : status === 'success' ? (
-                        <span className="text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-md flex items-center gap-1">
                             <Check className="h-3 w-3" /> 已保存
                         </span>
                     ) : (
                         <div className="flex items-center gap-1 opacity-70">
-                            <span className="font-mono bg-gray-100 px-1 py-0.5 rounded text-[9px]">{quickSendKey}</span>
+                            <span className="font-mono bg-muted px-1 py-0.5 rounded text-[9px]">{quickSendKey}</span>
                             <span>发送</span>
                         </div>
                     )}
@@ -446,8 +446,8 @@ const Memo: React.FC = () => {
                         onClick={handleSend}
                         disabled={sending || uploadingImage || (!content.trim() && !quote.trim())}
                         className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed ${status === 'success'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-teal-500 hover:bg-teal-600 text-white shadow-teal-500/30'
+                            ? 'bg-green-500 text-white dark:bg-green-600'
+                            : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30'
                             }`}
                     >
                         {sending ? (
