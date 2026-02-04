@@ -14,8 +14,7 @@ interface ScrapedImage {
     height: number;
 }
 
-import { ReadabilityLite } from '../utils/readability-lite';
-import TurndownService from 'turndown'; // Static import
+import { parseContent } from '../utils/content-parser';
 
 const Clipper: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -123,75 +122,6 @@ const Clipper: React.FC = () => {
         }
     };
 
-    // Shared cleaner logic for Local parsing
-    const localCleanNode = (node: Node): string => {
-        if (node.nodeType === Node.TEXT_NODE) {
-            return node.textContent || '';
-        }
-        if (node.nodeType !== Node.ELEMENT_NODE) return '';
-
-        const el = node as HTMLElement;
-        const tagName = el.tagName.toLowerCase();
-
-        // Hidden elements checks are harder on disconnected DOM, simple check
-        if (el.style.display === 'none' || el.style.visibility === 'hidden') return '';
-        if (['script', 'style', 'nav', 'footer', 'header', 'aside', 'noscript', 'iframe', 'svg'].includes(tagName)) return '';
-
-        let childrenText = '';
-        el.childNodes.forEach(child => {
-            childrenText += localCleanNode(child);
-        });
-
-        switch (tagName) {
-            case 'h1': return `\n# ${childrenText} \n\n`;
-            case 'h2': return `\n## ${childrenText} \n\n`;
-            case 'h3': return `\n### ${childrenText} \n\n`;
-            case 'h4': return `\n#### ${childrenText} \n\n`;
-            case 'h5': return `\n##### ${childrenText} \n\n`;
-            case 'h6': return `\n###### ${childrenText} \n\n`;
-            case 'p': return `\n${childrenText} \n\n`;
-            case 'br': return '\n';
-            case 'hr': return '\n---\n';
-            case 'blockquote': return `\n > ${childrenText} \n\n`;
-            case 'code': return `\`${childrenText}\``;
-            case 'pre': return `\n\`\`\`\n${childrenText}\n\`\`\`\n\n`;
-            case 'strong':
-            case 'b': return `**${childrenText}**`;
-            case 'em':
-            case 'i': return `*${childrenText}*`;
-            case 'a': {
-                const href = el.getAttribute('href');
-                if (!href || href.startsWith('javascript:')) return childrenText;
-                // Resolve relative URLs if possible
-                let absoluteHref = href;
-                try {
-                    absoluteHref = new URL(href, url).href;
-                } catch { }
-                return `[${childrenText}](${absoluteHref})`;
-            }
-            case 'img': {
-                const src = el.getAttribute('src');
-                const realSrc = src || el.getAttribute('data-src') || el.getAttribute('data-original');
-                if (!realSrc || realSrc.startsWith('data:')) return '';
-                // Resolve relative
-                let absoluteSrc = realSrc;
-                try {
-                    absoluteSrc = new URL(realSrc, url).href;
-                } catch { }
-                const alt = el.getAttribute('alt') || '';
-                return `![${alt}](${absoluteSrc})`;
-            }
-            case 'ul': return `\n${childrenText}\n`;
-            case 'ol': return `\n${childrenText}\n`;
-            case 'li': return `- ${childrenText}\n`;
-            case 'div':
-            case 'section':
-            case 'article':
-            case 'main':
-                return `\n${childrenText}\n`;
-            default: return childrenText;
-        }
-    };
 
     const scrapeExternalUrl = async (targetUrl: string) => {
         setStatus('loading');
@@ -201,23 +131,18 @@ const Clipper: React.FC = () => {
             if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
             const html = await res.text();
 
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-
-            // Heuristic for content
-            let root: HTMLElement = doc.body;
-            const article = doc.querySelector('article');
-            const main = doc.querySelector('main');
-            const contentDiv = doc.querySelector('.content') || doc.querySelector('.post-content') || doc.querySelector('#content');
-            if (article) root = article as HTMLElement;
-            else if (main) root = main as HTMLElement;
-            else if (contentDiv) root = contentDiv as HTMLElement;
-
-            const markdown = localCleanNode(root).replace(/\n{3,}/g, '\n\n').trim();
+            // Use the unified processing logic
+            const markdown = await processHtmlToMarkdown(html, targetUrl);
             setContent(markdown);
 
-            // Try to set title
-            if (doc.title) setSourceTitle(doc.title);
+            // Try to extract title from the fetched HTML if needed, 
+            // but processHtmlToMarkdown already returns the MD.
+            // Let's at least try to update the title if it's empty.
+            if (!sourceTitle) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                if (doc.title) setSourceTitle(doc.title);
+            }
 
             setStatus('idle');
             setMessage('');
@@ -293,43 +218,7 @@ const Clipper: React.FC = () => {
     };
 
     const processHtmlToMarkdown = async (html: string, baseUrl: string): Promise<string> => {
-        if (!html) throw new Error("Received empty HTML content from page");
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        if (!doc || !doc.body) {
-            throw new Error("DOMParser failed to produce a valid document body");
-        }
-
-        // 2.1 Use ReadabilityLite for core extraction (Static Import)
-        const reader = new ReadabilityLite(doc);
-        const article = reader.parse();
-
-        // 2.2 Turndown (Static Import)
-        const turndownService = new TurndownService({
-            headingStyle: 'atx',
-            codeBlockStyle: 'fenced',
-            bulletListMarker: '-',
-            emDelimiter: '*'
-        });
-
-        // Rules
-        turndownService.addRule('removeEmpty', {
-            filter: ['strong', 'b', 'em', 'i', 'a', 'p'],
-            replacement: function (content) {
-                return content.trim() === '' ? '' : content;
-            }
-        });
-
-        turndownService.addRule('removeScripts', {
-            filter: ['script', 'style', 'noscript', 'iframe', 'button', 'input', 'form'],
-            replacement: () => ''
-        });
-
-        // Convert the extracted content (or body if extraction failed to meet threshold)
-        const contentHtml = article ? article.content : (doc.body ? doc.body.innerHTML : '');
-        let markdown = turndownService.turndown(contentHtml);
+        let markdown = await parseContent(html, baseUrl);
 
         // 2.3 Powerful Post-Processing (Regex)
         markdown = cleanMarkdown(markdown);

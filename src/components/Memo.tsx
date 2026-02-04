@@ -301,9 +301,9 @@ const Memo: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white relative">
+        <div className="flex flex-col h-full bg-transparent relative">
             {/* Top Bar: Space Selector */}
-            <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between bg-white/80 backdrop-blur-sm z-10 sticky top-0">
+            <div className="px-5 py-3 flex items-center justify-between glass z-10 sticky top-0">
                 <div className="flex items-center gap-2 group relative">
                     <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Storage</span>
                     <div className="relative">
@@ -332,7 +332,7 @@ const Memo: React.FC = () => {
                 {!quote && (
                     <button
                         onClick={pasteFromClipboard}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-medium"
+                        className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-medium"
                         title="从剪贴板粘贴引用"
                     >
                         <Clipboard className="h-3.5 w-3.5" />
@@ -376,7 +376,7 @@ const Memo: React.FC = () => {
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="w-full text-xl font-bold text-gray-900 placeholder:text-gray-300 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
+                            className="w-full text-xl font-bold text-slate-900 placeholder:text-slate-300 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
                         />
                         <div className="relative">
                             <textarea
@@ -386,7 +386,7 @@ const Memo: React.FC = () => {
                                 onChange={(e) => setContent(e.target.value)}
                                 onPaste={handlePaste}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none text-base leading-7 text-gray-700 placeholder:text-gray-300/70 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
+                                className="w-full resize-none text-base leading-7 text-slate-700 placeholder:text-slate-300/70 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
                                 style={{ minHeight: '200px' }}
                             />
                             {uploadingImage && (
@@ -401,8 +401,8 @@ const Memo: React.FC = () => {
             </div>
 
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 border-t border-gray-50 flex items-center justify-between bg-white z-20 sticky bottom-0">
-                <div className="text-[10px] text-gray-400 flex items-center gap-2">
+            <div className="px-5 py-4 flex items-center justify-between glass z-20 sticky bottom-0 border-t-0 bg-white/60">
+                <div className="text-[10px] text-slate-400 flex items-center gap-2">
                     {/* Status / Hints */}
                     {status === 'error' ? (
                         <span className="text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-md flex items-center gap-1">

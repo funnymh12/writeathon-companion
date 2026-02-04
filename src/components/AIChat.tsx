@@ -165,9 +165,9 @@ const AIChat: React.FC = () => {
     }, [input]);
 
     return (
-        <div className="flex flex-col h-full bg-white relative">
+        <div className="flex flex-col h-full bg-transparent relative">
             {/* Header: Model Selector */}
-            <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between bg-white/80 backdrop-blur z-10 sticky top-0">
+            <div className="px-5 py-3 flex items-center justify-between glass z-10 sticky top-0">
                 <div className="flex items-center gap-2 group relative">
                     <div className="p-1.5 bg-gradient-to-tr from-teal-500 to-emerald-500 rounded-lg text-white shadow-sm">
                         <Bot className="h-4 w-4" />
@@ -207,7 +207,7 @@ const AIChat: React.FC = () => {
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 scrollbar-thin">
                 {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 opacity-50 pb-20">
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4 opacity-50 pb-20">
                         <div className="w-16 h-16 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-full flex items-center justify-center mb-2">
                             <Sparkles className="h-8 w-8 text-teal-200" />
                         </div>
@@ -230,8 +230,8 @@ const AIChat: React.FC = () => {
                             </div>
 
                             <div className={`group relative max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                                ? 'bg-white border border-gray-100 text-gray-800 rounded-tr-sm'
-                                : 'bg-white border border-gray-100 text-gray-700 rounded-tl-sm'
+                                ? 'bg-white/80 border border-white/50 text-slate-800 rounded-tr-sm backdrop-blur-sm'
+                                : 'bg-white/90 border border-white/60 text-slate-700 rounded-tl-sm backdrop-blur-sm'
                                 }`}>
                                 <div className="prose prose-sm prose-teal max-w-none break-words">
                                     <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -265,7 +265,7 @@ const AIChat: React.FC = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-gray-50 z-20">
+            <div className="p-4 glass border-t-0 z-20 sticky bottom-0">
                 <div className="relative flex items-end gap-2 bg-gray-50/50 rounded-2xl border border-gray-200/50 p-2 focus-within:bg-white focus-within:border-teal-200 focus-within:ring-2 focus-within:ring-teal-50 transition-all shadow-sm">
                     <textarea
                         ref={inputRef}

@@ -306,23 +306,23 @@ const Recent: React.FC = () => {
     // Detail View
     if (view === 'detail' && selectedCard) {
         return (
-            <div className="flex flex-col h-full bg-white relative">
+            <div className="flex flex-col h-full bg-transparent relative">
                 {/* Secondary Header - Detail specific */}
-                <div className="px-5 py-4 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-sm z-20 shrink-0 border-b border-gray-50/50">
+                <div className="px-5 py-4 flex items-center justify-between sticky top-0 bg-transparent backdrop-blur-md z-20 shrink-0 border-b border-white/40">
                     <div className="flex items-center gap-2 overflow-hidden">
                         <button
                             onClick={handleBack}
-                            className="p-1.5 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+                            className="p-1.5 -ml-2 hover:bg-white/50 rounded-xl transition-colors text-slate-500"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
-                        <h2 className="text-base font-bold text-gray-800 truncate">
+                        <h2 className="text-base font-bold text-slate-800 truncate">
                             {selectedCard?.title || '未命名'}
                         </h2>
                     </div>
                     <button
                         onClick={handleCopy}
-                        className={`p-2 rounded-lg transition-all ${copied ? 'bg-green-50 text-green-600' : 'hover:bg-gray-50 text-gray-400'}`}
+                        className={`p-2 rounded-xl transition-all ${copied ? 'bg-green-50 text-green-600' : 'hover:bg-white/50 text-slate-400 hover:text-teal-600'}`}
                         title="复制全文"
                     >
                         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -333,17 +333,17 @@ const Recent: React.FC = () => {
                 <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+                            <Loader2 className="h-6 w-6 animate-spin text-teal-200" />
                         </div>
                     ) : (
                         <div className="space-y-8 pb-10">
                             {/* Card Body */}
                             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="text-[15px] leading-8 text-gray-700 whitespace-pre-wrap font-serif select-text tracking-wide">
+                                <div className="text-[15px] leading-8 text-slate-700 whitespace-pre-wrap font-serif select-text tracking-wide">
                                     {selectedCard.content || '(无内容)'}
                                 </div>
                                 {selectedCard.updated && (
-                                    <div className="text-[10px] text-gray-300 flex items-center gap-1 pt-6 font-medium">
+                                    <div className="text-[10px] text-slate-400 flex items-center gap-1 pt-6 font-medium">
                                         <Clock className="w-3 h-3" />
                                         最后编辑: {new Date(selectedCard.updated).toLocaleString('zh-CN')}
                                     </div>
@@ -423,16 +423,16 @@ const Recent: React.FC = () => {
 
     // List View
     return (
-        <div className="flex flex-col h-full bg-white relative">
+        <div className="flex flex-col h-full bg-transparent relative">
             {/* Header Area */}
-            <div className="px-5 py-4 bg-white/90 backdrop-blur-xl z-10 sticky top-0 space-y-4 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.03)]">
+            <div className="px-5 py-4 glass z-10 sticky top-0 space-y-4">
                 <div className="flex items-center justify-between">
-                    <div className="p-1 bg-gray-100/80 rounded-lg flex gap-1">
+                    <div className="p-1 bg-slate-100/50 rounded-xl flex gap-1">
                         <button
                             onClick={() => handleTabChange('recent')}
-                            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'recent'
-                                ? 'bg-white text-teal-600 shadow-sm'
-                                : 'text-gray-400 hover:text-gray-600'
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${activeTab === 'recent'
+                                ? 'bg-white shadow-sm text-teal-600 ring-1 ring-black/5'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
                             最近
@@ -452,7 +452,7 @@ const Recent: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => activeTab === 'recent' ? fetchRecentCards() : fetchPickedCards()}
-                            className="p-2 text-gray-400 hover:text-teal-600 transition-colors rounded-lg hover:bg-gray-50"
+                            className="p-2 text-slate-400 hover:text-teal-600 transition-colors rounded-xl hover:bg-white/50"
                             title="刷新"
                             disabled={loading}
                         >
@@ -550,14 +550,14 @@ const Recent: React.FC = () => {
                                 <button
                                     key={card._id || card.id}
                                     onClick={() => handleCardClick(card)}
-                                    className="w-full text-left p-4 hover:bg-gray-50 rounded-2xl group transition-all duration-200 border border-transparent hover:border-gray-100 hover:shadow-sm"
+                                    className="w-full text-left p-4 bg-white/40 hover:bg-white/80 rounded-2xl group transition-all duration-300 border border-white/40 hover:border-white hover:shadow-sm"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="text-sm font-bold text-gray-800 group-hover:text-teal-700 transition-colors truncate mb-1.5">
+                                            <h3 className="text-sm font-bold text-slate-800 group-hover:text-teal-700 transition-colors truncate mb-1.5">
                                                 {card.title || '无标题'}
                                             </h3>
-                                            <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed font-normal">
+                                            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
                                                 {card.content || '...'}
                                             </p>
                                         </div>
@@ -595,17 +595,17 @@ const Recent: React.FC = () => {
                                 <div
                                     key={card._id || card.id || index}
                                     onClick={() => handleCardClick(card)}
-                                    className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl p-5 border border-gray-100 hover:border-teal-200 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.1)] transition-all duration-300 cursor-pointer overflow-hidden"
+                                    className="group relative bg-white/60 hover:bg-white/90 rounded-2xl p-5 border border-white/40 hover:border-teal-200 hover:shadow-lg hover:shadow-teal-100/20 transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-sm"
                                 >
                                     <div className="absolute top-0 left-0 w-1 h-full bg-teal-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    <h3 className="text-sm font-bold text-gray-800 mb-3 truncate pr-4">
+                                    <h3 className="text-sm font-bold text-slate-800 mb-3 truncate pr-4">
                                         {card.title || '无标题'}
                                     </h3>
-                                    <p className="text-xs text-gray-600 line-clamp-4 leading-relaxed font-serif tracking-wide opacity-80">
+                                    <p className="text-xs text-slate-600 line-clamp-4 leading-relaxed font-serif tracking-wide opacity-80">
                                         {card.content}
                                     </p>
                                     <div className="mt-4 flex items-center justify-end">
-                                        <span className="text-[10px] text-teal-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1">
+                                        <span className="text-[10px] text-teal-500 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1 font-medium">
                                             查看 <ArrowLeft className="h-3 w-3 rotate-180" />
                                         </span>
                                     </div>

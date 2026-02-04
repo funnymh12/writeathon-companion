@@ -1,120 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Premium Base Palette - Softer than pure black/white */
+    --background: 210 20% 98%; /* Soft simplistic gray/white */
     --foreground: 222.2 84% 4.9%;
+    
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    /* 写拉松主题青色 */
-    --primary: 168 65% 50%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 168 40% 96%;
+    
+    /* Writeathon Brand Identity */
+    --primary: 168 65% 50%; /* #2CD3B2 base teal */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 168 30% 96%;
     --secondary-foreground: 168 65% 30%;
+    
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 168 65% 96%;
-    --accent-foreground: 168 65% 35%;
+    
+    --accent: 168 40% 96%;
+    --accent-foreground: 168 50% 35%;
+    
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    
+    --border: 220 13% 91%; /* Softer borders */
+    --input: 220 13% 91%;
     --ring: 168 65% 50%;
-    --radius: 0.5rem;
+    
+    --radius: 0.75rem; /* More rounded 12px */
 
-    /* Writeathon Brand Colors */
-    --writeathon-primary: #4DB6AC;
-    --writeathon-primary-light: #80CBC4;
-    --writeathon-primary-dark: #26A69A;
+    /* Glass Effect Variables */
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-surface: rgba(255, 255, 255, 0.75);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 168 65% 50%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Dark mode implementation pending user request - keeping basic fallback */
   }
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
-
+  
   body {
-    @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(77, 182, 172, 0.03) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(77, 182, 172, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
-/* Custom Scrollbar for a premium feel */
 @layer utilities {
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  .glass {
+    background: var(--glass-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--glass-border);
   }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  }
+
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  /* Custom Scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #e2e8f0;
-    border-radius: 20px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: #cbd5e1;
+    @apply bg-slate-200 hover:bg-slate-300 transition-colors rounded-full;
   }
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-teal-500 hover:bg-teal-600 text-white transition-colors;
+/* Animations */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
   }
-  .btn-secondary {
-    @apply bg-teal-50 hover:bg-teal-100 text-teal-600 transition-colors;
-  }
-  .card-hover {
-    @apply hover:shadow-md hover:border-teal-200 transition-all duration-200;
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-/* Simple animations if tailwindcss-animate is missing */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.animate-enter {
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-in {
-  animation-duration: 0.3s;
-  animation-fill-mode: both;
-}
-.fade-in {
-  animation-name: fadeIn;
-}
-.slide-in-from-bottom-2 {
-  animation-name: slideUp;
+.hover-lift {
+  @apply transition-transform duration-300 ease-out hover:-translate-y-0.5;
 }
