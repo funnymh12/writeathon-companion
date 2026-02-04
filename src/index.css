@@ -118,11 +118,10 @@
 }
 
 @layer utilities {
+
+  /* Glass Utilities (Clean Air) */
   .glass {
-    background: var(--glass-surface);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--glass-border);
+    @apply bg-white/85 backdrop-blur-xl border-b border-white/60 shadow-sm
   }
 
   .glass-card {
