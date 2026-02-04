@@ -43,9 +43,9 @@
 - **DeepSeek 支持 (`content-parser.ts`)**:
     - 新增 `chat.deepseek.com` 解析策略。
     - 智能提取 `<think>` 思考过程，并以引用块 `> [深度思考]` 形式展示，与最终回复区分。
-- **视觉突破: 极光玻璃 (Design Breakthrough)**:
-    - **Aurora Background**: 引入了动态的 Teal/Purple/Blue 极光渐变背景，通过 CSS Keyframe 动画让背景缓慢漂浮和呼吸。
-    - **Living UI**: 界面容器透明度调整，配合 noise 纹理，赋予插件“活着”的通透感，大幅提升高级感。
+- **视觉回归: 禅意纸张 (Design Pivot: Zen Paper)**:
+    - **Zen Background**: 移除了活跃的动态极光，回归静谧的纸张质感。采用极其微弱的右上角 Teal 光源 Gradient，营造出一种高级的、仿佛自然光打在纸面上的通透感。
+    - **Focus First**: 极大地降低了背景噪音，确保内容区的绝对清晰。玻璃效果调整为更加克制的磨砂质感，不喧宾夺主。
 - **离线草稿 (`Memo.tsx`)**:
     - **安心模式**: 内容、标题和引用会自动保存到 `localStorage`。
     - **自动恢复**: 意外关闭或刷新后，再次打开插件可无缝恢复未发送的草稿。
