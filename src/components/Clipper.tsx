@@ -561,7 +561,7 @@ const Clipper: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-transparent relative">
             {/* Top Bar: Space & Mode */}
-            <div className="px-4 py-3 flex items-center justify-between glass z-10 sticky top-0">
+            <div className="px-4 py-3 flex items-center justify-between glass z-10">
                 {/* Mode Switcher - Pill Style */}
                 <div className="flex p-0.5 bg-gray-100/80 rounded-lg">
                     <button
@@ -624,18 +624,18 @@ const Clipper: React.FC = () => {
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full text-base font-bold text-slate-800 bg-transparent border-none placeholder:text-slate-300 focus:ring-0 p-0"
+                                className="w-full text-base font-bold text-slate-800 bg-transparent border-none placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500/20 rounded-lg px-2 py-1 -ml-2 transition-all"
                                 placeholder="标题..."
                             />
 
                             {/* URL Input */}
-                            <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm rounded-xl border border-white/60 px-3 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-teal-100">
+                            <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm rounded-xl border border-white/60 px-3 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-teal-500/10 focus-within:border-teal-500/50">
                                 <Globe className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                                 <input
                                     type="text"
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
-                                    className="flex-1 text-xs text-slate-500 bg-transparent border-none focus:ring-0 p-0 placeholder:text-slate-400"
+                                    className="flex-1 text-xs text-slate-500 bg-transparent border-none outline-none focus:ring-0 p-0 placeholder:text-slate-400"
                                     placeholder="https://..."
                                 />
                                 <button
@@ -717,7 +717,7 @@ const Clipper: React.FC = () => {
             </div>
 
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 glass flex items-center justify-between z-20 sticky bottom-0 border-t-0 bg-white/60">
+            <div className="px-5 py-4 glass flex items-center justify-between z-20 border-t-0 bg-white/60 mt-auto">
                 <div className="text-[10px] text-slate-400 font-medium">
                     {status === 'error' ? (
                         <span className="text-red-500 flex items-center gap-1.5">
