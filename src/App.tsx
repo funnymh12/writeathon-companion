@@ -70,18 +70,17 @@ function App() {
     }
 
     return (
-        <div className="flex h-screen flex-col font-sans text-gray-900 overflow-hidden relative selection:bg-teal-100 selection:text-teal-900 bg-slate-50/20 isolate">
-            {/* 🌌 Aurora Background Layer */}
+        <div className="flex h-screen flex-col font-sans text-gray-900 overflow-hidden relative selection:bg-cyan-100 selection:text-cyan-900 bg-[#FAFAFA] isolate">
+            {/* 🍃 Zen Background Layer */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                {/* 1. Teal Orb */}
-                <div className="absolute top-[-10%] left-[-10%] w-[50vh] h-[50vh] bg-teal-400/30 rounded-full blur-[80px] animate-blob mix-blend-multiply" />
-                {/* 2. Purple Orb */}
-                <div className="absolute top-[-10%] right-[-10%] w-[50vh] h-[50vh] bg-indigo-400/30 rounded-full blur-[80px] animate-blob animation-delay-2000 mix-blend-multiply" />
-                {/* 3. Blue Orb (Bottom) */}
-                <div className="absolute bottom-[-20%] left-[20%] w-[60vh] h-[60vh] bg-blue-400/20 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-multiply" />
+                {/* Subtle Light Source (Top Right) - Static & Gentle */}
+                <div className="absolute top-0 right-0 w-[100%] h-[80%] bg-gradient-to-bl from-teal-50/40 via-transparent to-transparent opacity-80" />
 
-                {/* Noise Texture Overlay */}
-                <div className="absolute inset-0 opacity-[0.05] bg-repeat pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+                {/* Ambient Warmth (Bottom Left) */}
+                <div className="absolute bottom-0 left-0 w-[80%] h-[60%] bg-gradient-to-tr from-slate-100/50 via-gray-50/20 to-transparent" />
+
+                {/* Paper Texture Noise */}
+                <div className="absolute inset-0 opacity-[0.015] bg-repeat mix-blend-multiply" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
             </div>
 
             {/* Header - Glass Effect */}
