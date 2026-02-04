@@ -20,7 +20,7 @@ function App() {
         checkAuth();
 
         const listener = (changes: any) => {
-            if (changes.token) {
+            if (changes.token || changes.enabledModules) {
                 checkAuth();
             }
         };

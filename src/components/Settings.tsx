@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WriteathonClient } from '../utils/api';
 import { storage } from '../utils/storage';
-import { Loader2, Save, LogOut, Key, Settings as SettingsIcon, User, Globe, Command, Eye, EyeOff, Check, AlertCircle, Bot } from 'lucide-react';
+import { Loader2, Save, LogOut, Key, Settings as SettingsIcon, User, Globe, Command, Eye, EyeOff, Check, AlertCircle, Bot, Notebook, History, Scissors, Sparkles, MessageSquare } from 'lucide-react';
 
 const Settings: React.FC = () => {
     const [token, setToken] = useState('');
@@ -25,6 +25,15 @@ const Settings: React.FC = () => {
     // Shortcuts
     const [globalClipShortcut, setGlobalClipShortcut] = useState('Alt+S');
     const [quickSendShortcut, setQuickSendShortcut] = useState('Ctrl+Enter');
+
+    // Module Visibility
+    const [enabledModules, setEnabledModules] = useState({
+        memo: true,
+        recent: true,
+        clip: true,
+        prompt: true,
+        chat: true
+    });
 
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<string>('');
@@ -70,6 +79,10 @@ const Settings: React.FC = () => {
             if (data.shortcuts.globalClip) setGlobalClipShortcut(data.shortcuts.globalClip);
             if (data.shortcuts.quickSend) setQuickSendShortcut(data.shortcuts.quickSend);
         }
+
+        if (data.enabledModules) {
+            setEnabledModules({ ...enabledModules, ...data.enabledModules });
+        }
     };
 
     const handleSave = async () => {
@@ -108,7 +121,8 @@ const Settings: React.FC = () => {
                 shortcuts: {
                     globalClip: globalClipShortcut,
                     quickSend: quickSendShortcut
-                }
+                },
+                enabledModules
             });
 
             setStatus('success');
@@ -377,6 +391,50 @@ const Settings: React.FC = () => {
                     </div>
                 </section>
 
+                {/* 4. Module Management */}
+                <section className="space-y-4">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <Command className="h-3.5 w-3.5" /> 功能开关
+                    </h3>
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-2">
+                        <ModuleToggle
+                            icon={<Notebook className="h-4 w-4" />}
+                            label="速记"
+                            description="随时随地记录灵感"
+                            enabled={enabledModules.memo}
+                            onChange={(val) => setEnabledModules({ ...enabledModules, memo: val })}
+                        />
+                        <ModuleToggle
+                            icon={<History className="h-4 w-4" />}
+                            label="最近"
+                            description="查看并管理历史卡片"
+                            enabled={enabledModules.recent}
+                            onChange={(val) => setEnabledModules({ ...enabledModules, recent: val })}
+                        />
+                        <ModuleToggle
+                            icon={<Scissors className="h-4 w-4" />}
+                            label="剪藏"
+                            description="整页或图片网页收藏"
+                            enabled={enabledModules.clip}
+                            onChange={(val) => setEnabledModules({ ...enabledModules, clip: val })}
+                        />
+                        <ModuleToggle
+                            icon={<Sparkles className="h-4 w-4" />}
+                            label="灵感"
+                            description="AI 辅助写作与提示词"
+                            enabled={enabledModules.prompt}
+                            onChange={(val) => setEnabledModules({ ...enabledModules, prompt: val })}
+                        />
+                        <ModuleToggle
+                            icon={<MessageSquare className="h-4 w-4" />}
+                            label="助手"
+                            description="深度 AI 对话问答"
+                            enabled={enabledModules.chat}
+                            onChange={(val) => setEnabledModules({ ...enabledModules, chat: val })}
+                        />
+                    </div>
+                </section>
+
                 {/* 4. Shortcuts Hint */}
                 <section className="space-y-4 pb-12">
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -474,6 +532,27 @@ const getShortcutString = (event: React.KeyboardEvent | KeyboardEvent) => {
     parts.push(key);
     return parts.join('+');
 }
+
+// Helper for module toggle
+const ModuleToggle = ({ icon, label, description, enabled, onChange }: { icon: React.ReactNode, label: string, description: string, enabled: boolean, onChange: (val: boolean) => void }) => (
+    <div className="flex items-center justify-between py-3 group">
+        <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl transition-colors ${enabled ? 'bg-teal-50 text-teal-600' : 'bg-gray-50 text-gray-400'}`}>
+                {icon}
+            </div>
+            <div>
+                <p className={`text-sm font-bold ${enabled ? 'text-gray-800' : 'text-gray-400'}`}>{label}</p>
+                <p className="text-[10px] text-gray-400">{description}</p>
+            </div>
+        </div>
+        <button
+            onClick={() => onChange(!enabled)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ring-2 ring-transparent focus:ring-teal-500/10 ${enabled ? 'bg-teal-500' : 'bg-gray-200'}`}
+        >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+    </div>
+);
 
 // Helper for icon
 const ChevronDown = ({ className }: { className?: string }) => (
