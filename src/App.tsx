@@ -70,9 +70,22 @@ function App() {
     }
 
     return (
-        <div className="flex h-screen flex-col font-sans text-gray-900 overflow-hidden relative selection:bg-teal-100 selection:text-teal-900">
+        <div className="flex h-screen flex-col font-sans text-gray-900 overflow-hidden relative selection:bg-teal-100 selection:text-teal-900 bg-slate-50/20 isolate">
+            {/* 🌌 Aurora Background Layer */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                {/* 1. Teal Orb */}
+                <div className="absolute top-[-10%] left-[-10%] w-[50vh] h-[50vh] bg-teal-400/30 rounded-full blur-[80px] animate-blob mix-blend-multiply" />
+                {/* 2. Purple Orb */}
+                <div className="absolute top-[-10%] right-[-10%] w-[50vh] h-[50vh] bg-indigo-400/30 rounded-full blur-[80px] animate-blob animation-delay-2000 mix-blend-multiply" />
+                {/* 3. Blue Orb (Bottom) */}
+                <div className="absolute bottom-[-20%] left-[20%] w-[60vh] h-[60vh] bg-blue-400/20 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-multiply" />
+
+                {/* Noise Texture Overlay */}
+                <div className="absolute inset-0 opacity-[0.05] bg-repeat pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+            </div>
+
             {/* Header - Glass Effect */}
-            <header className="glass absolute top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-5 transition-all">
+            <header className="glass absolute top-0 left-0 right-0 h-14 z-10 flex items-center justify-between px-5 transition-all">
                 <div className="flex items-center gap-3">
                     {activeTab === 'settings' && isAuth ? (
                         <button
@@ -112,7 +125,7 @@ function App() {
             </header>
 
             {/* Main Content - Padded for Header/Nav */}
-            <main className="flex-1 overflow-hidden relative flex flex-col pt-14 pb-[70px]">
+            <main className="flex-1 overflow-hidden relative flex flex-col pt-14 pb-[70px] z-10">
                 <div key={activeTab} className="h-full w-full overflow-y-auto scrollbar-thin animate-enter px-1">
                     {activeTab === 'memo' && <Memo />}
                     {activeTab === 'recent' && <Recent />}
@@ -125,7 +138,7 @@ function App() {
 
             {/* Navigation Bar - Floating Glass */}
             {isAuth && activeTab !== 'settings' && (
-                <nav className="glass absolute bottom-0 left-0 right-0 h-[68px] flex items-center justify-around px-2 z-40 pb-safe">
+                <nav className="glass absolute bottom-0 left-0 right-0 h-[68px] flex items-center justify-around px-2 z-20 pb-safe">
                     <NavButton
                         active={activeTab === 'memo'}
                         onClick={() => handleTabChange('memo')}
@@ -184,21 +197,21 @@ function NavButton({ active, onClick, icon, label, visible }: { active: boolean;
             `}>
                 {icon}
             </div>
-            
+
             <span className={`
                 text-[10px] font-medium tracking-wide transition-all duration-300
                 ${active ? 'opacity-100 translate-y-0 font-semibold' : 'opacity-0 translate-y-2 group-hover:opacity-70 group-hover:translate-y-0'}
             `}>
                 {label}
             </span>
-            
+
             {/* Active Glow Indicator */}
             {active && (
                 <div className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-8 bg-teal-400/20 blur-xl rounded-full" />
             )}
-            
+
             {/* Bottom active pill */}
-             {active && (
+            {active && (
                 <div className="absolute bottom-1 w-1 h-1 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(20,184,166,0.5)] animate-in fade-in zoom-in duration-300" />
             )}
         </button>
