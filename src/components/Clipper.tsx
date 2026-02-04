@@ -254,13 +254,21 @@ const Clipper: React.FC = () => {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    // Basic cleanup in the tab context before serialization
+                    // Pre-cleanup in tab context
                     const clone = document.cloneNode(true) as Document;
 
-                    // Remove obvious junk to save data transfer
-                    const junkTags = ['script', 'style', 'noscript', 'iframe', 'svg', 'button', 'input', 'textarea'];
-                    junkTags.forEach(tag => {
-                        clone.querySelectorAll(tag).forEach(el => el.remove());
+                    // Force clean WeChat/Common junk early
+                    const knownJunk = [
+                        '#js_pc_qr_code', '.qr_code_pc_outer', // WeChat QR
+                        '.rich_media_area_extra', '#js_sponsor_ad_area', '.reward_area', // WeChat Reward
+                        '.like_comment_share_area', // WeChat Like
+                        '.related_answer_list', '.Question-sideColumn', // Zhihu
+                        '.recommend-box', '.login-mark', // CSDN
+                        'script', 'style', 'noscript', 'iframe', 'svg', 'button', 'input', 'textarea'
+                    ];
+
+                    knownJunk.forEach(sel => {
+                        clone.querySelectorAll(sel).forEach(el => el.remove());
                     });
 
                     // Resolve lazy loaded images
@@ -269,13 +277,9 @@ const Clipper: React.FC = () => {
                         if (img.dataset.original) img.src = img.dataset.original;
                     });
 
-                    // Absolute URLs
-                    clone.querySelectorAll('a').forEach(a => {
-                        try { a.href = a.href; } catch { }
-                    });
-                    clone.querySelectorAll('img').forEach(img => {
-                        try { img.src = img.src; } catch { }
-                    });
+                    // Fix Absolute URLs
+                    clone.querySelectorAll('a').forEach(a => { try { a.href = a.href; } catch { } });
+                    clone.querySelectorAll('img').forEach(img => { try { img.src = img.src; } catch { } });
 
                     return clone.documentElement.outerHTML;
                 }
@@ -283,7 +287,7 @@ const Clipper: React.FC = () => {
 
             if (results && results[0]) {
                 const html = results[0].result as string;
-                // 2. Process in Side Panel using robust libraries/logic
+                // 2. Process in Side Panel
                 const markdown = await processHtmlToMarkdown(html, tab.url || '');
                 setContent(markdown);
 
@@ -302,63 +306,13 @@ const Clipper: React.FC = () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // 2.1 Remove Blacklisted Elements (Comments, Ads, Sidebar, etc.)
-        const trashSelectors = [
-            '.ad', '.ads', '.advertisement', '.banner',
-            '.comment', '.comments', '#comments', '.comment-list',
-            '.sidebar', '#sidebar', '.widget',
-            'nav', 'footer', '.footer',
-            '.menu', '.nav', '.navigation', '.toc',
-            '.share-buttons', '.social-media',
-            '.copyright', '.meta', '.related-posts'
-        ];
-        trashSelectors.forEach(sel => {
-            doc.querySelectorAll(sel).forEach(el => el.remove());
-        });
+        // 2.1 Use ReadabilityLite for core extraction
+        // We dynamically import enabled local util
+        const { ReadabilityLite } = await import('../utils/readability-lite');
+        const reader = new ReadabilityLite(doc);
+        const article = reader.parse();
 
-        // 2.2 Smart Extract (Readability-lite)
-        let root: HTMLElement = doc.body;
-        // Priority 1: <article>
-        const article = doc.querySelector('article');
-        // Priority 2: <main> or role="main"
-        const main = doc.querySelector('main') || doc.querySelector('[role="main"]');
-        // Priority 3: Common content classes
-        const contentDiv = doc.querySelector('.content') || doc.querySelector('.post-content') || doc.querySelector('.article-content') || doc.querySelector('#content');
-
-        if (article) root = article as HTMLElement;
-        else if (main) root = main as HTMLElement;
-        else if (contentDiv) root = contentDiv as HTMLElement;
-        else {
-            // Priority 4: Paragraph Scoring (Find the parent with most text)
-            const paragraphs = Array.from(doc.querySelectorAll('p'));
-            const scores = new Map<HTMLElement, number>();
-            let maxScore = 0;
-            let bestCandidate = doc.body;
-
-            paragraphs.forEach(p => {
-                const textLen = p.textContent?.length || 0;
-                if (textLen < 20) return; // Ignore short lines
-
-                let parent = p.parentElement;
-                if (parent) {
-                    const currentScore = scores.get(parent) || 0;
-                    const newScore = currentScore + textLen;
-                    scores.set(parent, newScore);
-
-                    if (newScore > maxScore) {
-                        maxScore = newScore;
-                        bestCandidate = parent;
-                    }
-                }
-            });
-            // If we found a distinct best candidate (e.g. > 500 chars), use it
-            if (maxScore > 500) {
-                root = bestCandidate;
-            }
-        }
-
-        // 2.3 Configure Turndown
-        // We dynamically import turndown or assume it's available via import at top
+        // 2.2 Turndown
         const TurndownService = (await import('turndown')).default;
         const turndownService = new TurndownService({
             headingStyle: 'atx',
@@ -367,9 +321,9 @@ const Clipper: React.FC = () => {
             emDelimiter: '*'
         });
 
-        // Clean rules
+        // Rules
         turndownService.addRule('removeEmpty', {
-            filter: ['strong', 'b', 'em', 'i', 'a'],
+            filter: ['strong', 'b', 'em', 'i', 'a', 'p'],
             replacement: function (content) {
                 return content.trim() === '' ? '' : content;
             }
@@ -380,19 +334,47 @@ const Clipper: React.FC = () => {
             replacement: () => ''
         });
 
-        // 2.4 Convert
-        let markdown = turndownService.turndown(root.innerHTML);
+        // Convert the extracted content (or body if extraction failed to meet threshold)
+        const contentHtml = article ? article.content : doc.body.innerHTML;
+        let markdown = turndownService.turndown(contentHtml);
 
-        // 2.5 Regex Cleanup
-        markdown = markdown
-            .replace(/\*\*\s+\*\*/g, '')          // ** **
-            .replace(/\*\*\*\*/g, '')             // ****
-            .replace(/\n{3,}/g, '\n\n')           // Too many newlines
-            .replace(/!\[\]\(data:image.*?\)/g, '') // Base64 trash
-            .replace(/^\[\]\(.*?\)$/gm, '')       // Empty links
-            .trim();
+        // 2.3 Powerful Post-Processing (Regex)
+        markdown = cleanMarkdown(markdown);
 
         return markdown;
+    };
+
+    const cleanMarkdown = (markdown: string): string => {
+        let md = markdown;
+
+        // 1. Remove "Loading" placeholders and common UI states
+        md = md.replace(/^正在加载\.\.\.$/gm, '');
+        md = md.replace(/^加载中$/gm, '');
+        md = md.replace(/^名称已清空$/gm, '');
+
+        // 2. Remove WeChat specific junk text (often pure text without formatting)
+        // e.g. "微信扫一扫赞赏作者", "41人喜欢", "喜欢作者"
+        md = md.replace(/微信扫一扫[\s\S]{0,10}赞赏作者/g, '');
+        md = md.replace(/赞赏作者/g, '');
+        md = md.replace(/\d+人喜欢/g, '');
+        md = md.replace(/^喜欢$/gm, '');
+        md = md.replace(/喜欢作者其它金额/g, '');
+        md = md.replace(/轻点两下取消赞/g, '');
+
+        // 3. Remove common useless lines
+        md = md.replace(/阅读\s+\d+/g, ''); // 阅读 10000+
+        md = md.replace(/修改于\s+\d{4}-\d{2}-\d{2}/g, ''); // WeChat modify date
+
+        // 4. Formatting Cleanup
+        md = md.replace(/\*\*\s+\*\*/g, ' ')          // Empty bold (space preserved)
+        md = md.replace(/\*\*\*\*/g, '')             // Empty bold
+        md = md.replace(/^\[\]\(.*?\)$/gm, '')       // Empty links
+        md = md.replace(/!\[\]\(data:image.*?\)/g, '') // Base64 trash
+
+        // 5. Compress newlines
+        md = md.replace(/\n{3,}/g, '\n\n').trim();
+
+        return md;
     };
 
     const scrapeImages = async () => {
