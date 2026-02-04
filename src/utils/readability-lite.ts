@@ -173,30 +173,83 @@ export class ReadabilityLite {
     }
 
     private cleanArticle(article: HTMLElement) {
-        // Deep clean specific to article content
+        // 1. Structural cleaning based on class/id/tag
         const trash = [
-            'form', 'object', 'iframe', 'textarea',
-            // Social/Share/Recommend usually found inside articles
-            '.share', '.related', '.recommend', '.copyright',
-            // WeChat specific
+            'form', 'object', 'iframe', 'textarea', 'input', 'button',
+            // Universal noise classes
+            '.share', '.shared', '.social', '.sociable', '.sns', '.contact',
+            '.related', '.related-posts', '.related-content', '.recommend',
+            '.copyright', '.credit', '.source', '.author-bio',
+            '.meta', '.metadata', '.post-meta',
+            '.newsletter', '.signup', '.subscribe',
+            '.footer', '.foot', '.bottom',
+            '.comments', '.comment-list', '.comment-box',
+            // Specific Platform noise
             '.reward_area', '#js_sponsor_ad_area', '.weui-loadmore',
-            '.rich_media_tool', '.js_click_ad'
+            '.rich_media_tool', '.js_click_ad', '#js_pc_qr_code',
+            '.lb-container' // CSDN login box
         ];
 
         trash.forEach(sel => {
             article.querySelectorAll(sel).forEach(el => el.remove());
         });
 
-        // Remove elements with high link density (navigation lists that sneaked in)
-        article.querySelectorAll('div, ul, section').forEach(el => {
+        // 2. Trailing Junk Cleanup (Bottom-up scan)
+        // Many articles have random "likes", "read count", "next/prev" links at the end
+        // that are inside the main container but aren't substantive.
+        let lastChild = article.lastElementChild;
+        while (lastChild) {
+            const prev = lastChild.previousElementSibling;
+            if (this.isTrailingJunk(lastChild as HTMLElement)) {
+                lastChild.remove();
+                lastChild = prev;
+            } else {
+                // Found something substantial, stop deleting
+                break;
+            }
+        }
+
+        // 3. Link Density check for remaining blocks
+        // Remove internal divs that look like nav/lists
+        article.querySelectorAll('div, ul, section, aside').forEach(el => {
             const hEl = el as HTMLElement;
+            // Don't remove the article itself or heavy containers we just cleaned
+            if (hEl.contains(article) || hEl === article) return;
+
             const density = this.getLinkDensity(hEl);
             const length = hEl.textContent?.length || 0;
-            // High density small blocks are likely junk
-            if (density > 0.5 && length < 200) {
+
+            // High density small blocks are likely junk (navs, tag lists)
+            if (density > 0.6 && length < 300) {
                 hEl.remove();
             }
         });
+    }
+
+    private isTrailingJunk(node: HTMLElement): boolean {
+        // Tag check
+        if (['HR', 'BR'].includes(node.tagName)) return true;
+
+        const text = (node.innerText || '').trim();
+        const len = text.length;
+
+        // 1. Empty or very short elements are often spacers
+        if (len === 0) return true;
+
+        // 2. Check for Noise Keywords in short blocks
+        if (len < 100) {
+            const noise = /喜欢|赞|reading|read|share|views|关注|reward|copy|copyright|license|next|prev|扫描|二维码|QR|订阅|subscribe/i;
+            if (noise.test(text)) return true;
+        }
+
+        // 3. Link Density Check (Next/Prev article links)
+        const density = this.getLinkDensity(node);
+        if (len < 200 && density > 0.5) return true;
+
+        // 4. Specific "Loading" junk
+        if (/loading|加载中/.test(text)) return true;
+
+        return false;
     }
 
     private getExcerpt(node: HTMLElement): string {

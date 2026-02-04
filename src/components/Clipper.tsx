@@ -347,31 +347,50 @@ const Clipper: React.FC = () => {
     const cleanMarkdown = (markdown: string): string => {
         let md = markdown;
 
-        // 1. Remove "Loading" placeholders and common UI states
-        md = md.replace(/^正在加载\.\.\.$/gm, '');
-        md = md.replace(/^加载中$/gm, '');
-        md = md.replace(/^名称已清空$/gm, '');
+        // 1. Loading and Maintenance States
+        // Pattern: Matches short lines indicating loading/empty/error states
+        md = md.replace(/^.*?(?:loading|加载中|waiting|processing|名称已清空).*?$/gim, (match) => {
+            return match.length < 30 ? '' : match;
+        });
 
-        // 2. Remove WeChat specific junk text (often pure text without formatting)
-        // e.g. "微信扫一扫赞赏作者", "41人喜欢", "喜欢作者"
-        md = md.replace(/微信扫一扫[\s\S]{0,10}赞赏作者/g, '');
-        md = md.replace(/赞赏作者/g, '');
-        md = md.replace(/\d+人喜欢/g, '');
-        md = md.replace(/^喜欢$/gm, '');
-        md = md.replace(/喜欢作者其它金额/g, '');
-        md = md.replace(/轻点两下取消赞/g, '');
+        // 2. Social Meta and Interactions (Pattern based)
+        const socialPatterns = [
+            // Likes/Views/Comments with numbers
+            /^(?:阅读|Read|Views)\s*\d+/im,
+            /^\d+\s*(?:likes|comments|shares|人?喜欢|人?在看|条?评论|点赞)/im,
+            // QR Codes/Subscriptions
+            /^(?:微信)?扫一扫.*?$/im,
+            /^(?:关注|订阅|Subscribe).*?$/im,
+            // Date/Modification lines
+            /^(?:Modified|修改于|Published|发布于)\s+\d{4}[-/]\d{2}[-/]\d{2}/im
+        ];
 
-        // 3. Remove common useless lines
-        md = md.replace(/阅读\s+\d+/g, ''); // 阅读 10000+
-        md = md.replace(/修改于\s+\d{4}-\d{2}-\d{2}/g, ''); // WeChat modify date
+        socialPatterns.forEach(pat => {
+            md = md.replace(pat, ' ');
+        });
+
+        // 3. Specific Noise Phrases (Short phrases often found in footers)
+        const phrases = [
+            '赞赏作者', '轻点两下取消赞', '喜欢作者',
+            '点击上方', '蓝色字体', '关注我们'
+        ];
+        phrases.forEach(p => {
+            // Remove line if it starts with the phrase
+            md = md.replace(new RegExp(`^.*?${p}.*?$`, 'gm'), '');
+        });
 
         // 4. Formatting Cleanup
-        md = md.replace(/\*\*\s+\*\*/g, ' ')          // Empty bold (space preserved)
-        md = md.replace(/\*\*\*\*/g, '')             // Empty bold
-        md = md.replace(/^\[\]\(.*?\)$/gm, '')       // Empty links
-        md = md.replace(/!\[\]\(data:image.*?\)/g, '') // Base64 trash
+        // Empty Bold/Italic
+        md = md.replace(/\*\*\s*\*\*/g, '');
+        md = md.replace(/\*\s*\*/g, '');
 
-        // 5. Compress newlines
+        // Empty Links `[](url)` or `[text]()` or `[]()`
+        md = md.replace(/\[\s*\]\(.*?\)/g, '');
+
+        // Base64 Images
+        md = md.replace(/!\[.*?\]\(data:image.*?\)/g, '');
+
+        // 5. Excessive Newlines
         md = md.replace(/\n{3,}/g, '\n\n').trim();
 
         return md;
@@ -876,5 +895,6 @@ const Clipper: React.FC = () => {
         </div>
     );
 };
+
 
 export default Clipper;
