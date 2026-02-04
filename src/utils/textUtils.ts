@@ -12,5 +12,5 @@ export const formatLogFooter = (content: string): string => {
     const count = content.length;
 
     // Format: log：$(YYYY)$(month_mm)$(day_dd)$(hh)$(mm)，{字数}
-    return `\n\nlog：${yyyy}${mm}${dd}${hh}${min}，${count}`;
+    return `\n\nlog：${yyyy}${mm}${dd}${hh}${min}，${count}\n\n`;
 };
