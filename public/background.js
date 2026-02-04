@@ -185,13 +185,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // 处理来自 Content Script 的消息 (全局快捷键)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'CLIP_SELECTION') {
-        const { title, url, selection } = message.payload;
-        const tabId = sender.tab?.id;
-
         handleQuickClip(tabId, title, url, selection);
+    }
 
-        // 必须返回 true 以支持异步 sendResponse，或者不需要返回直接结束
-        // 这里不需要回复
+    if (message.type === 'OPEN_SIDE_PANEL') {
+        const tabId = sender.tab?.id;
+        if (tabId) {
+            // 设置一个标记告知侧边栏打开后应该显示哪个 tab
+            chrome.storage.local.set({ jumpToTab: message.payload.tab || 'memo' }).then(() => {
+                chrome.sidePanel.open({ tabId });
+            });
+        }
     }
 
     // 处理获取图片并转换为 base64 的请求（用于防盗链图片处理）

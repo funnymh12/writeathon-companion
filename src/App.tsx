@@ -17,11 +17,25 @@ function App() {
     const [enabledModules, setEnabledModules] = useState<any>({ memo: true, recent: true, clip: true, prompt: true, chat: true });
 
     useEffect(() => {
+        const checkJump = async () => {
+            const data = await chrome.storage.local.get(['jumpToTab']);
+            if (data.jumpToTab) {
+                setActiveTab(data.jumpToTab as Tab);
+                // 切换后清除标记，防止下次开启侧边栏时还是强行切换
+                await chrome.storage.local.remove('jumpToTab');
+            }
+        };
+
         checkAuth();
+        checkJump();
 
         const listener = (changes: any) => {
             if (changes.token || changes.enabledModules) {
                 checkAuth();
+            }
+            if (changes.jumpToTab && changes.jumpToTab.newValue) {
+                setActiveTab(changes.jumpToTab.newValue as Tab);
+                chrome.storage.local.remove('jumpToTab');
             }
         };
         chrome.storage.onChanged.addListener(listener);

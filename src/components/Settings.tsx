@@ -24,6 +24,7 @@ const Settings: React.FC = () => {
 
     // Shortcuts
     const [globalClipShortcut, setGlobalClipShortcut] = useState('Alt+S');
+    const [openMemoShortcut, setOpenMemoShortcut] = useState('Alt+M');
     const [quickSendShortcut, setQuickSendShortcut] = useState('Ctrl+Enter');
 
     // Module Visibility
@@ -77,6 +78,7 @@ const Settings: React.FC = () => {
 
         if (data.shortcuts) {
             if (data.shortcuts.globalClip) setGlobalClipShortcut(data.shortcuts.globalClip);
+            if (data.shortcuts.openMemo) setOpenMemoShortcut(data.shortcuts.openMemo);
             if (data.shortcuts.quickSend) setQuickSendShortcut(data.shortcuts.quickSend);
         }
 
@@ -120,6 +122,7 @@ const Settings: React.FC = () => {
                 imgbbApiKey, // Keep strictly for rollback/compatibility if needed, but primary is imageConfig
                 shortcuts: {
                     globalClip: globalClipShortcut,
+                    openMemo: openMemoShortcut,
                     quickSend: quickSendShortcut
                 },
                 enabledModules
@@ -453,6 +456,21 @@ const Settings: React.FC = () => {
                                     e.preventDefault();
                                     const shortcut = getShortcutString(e);
                                     if (shortcut) setGlobalClipShortcut(shortcut);
+                                }}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-gray-700">唤起速记模块 (全局)</label>
+                            <input
+                                type="text"
+                                value={openMemoShortcut}
+                                onChange={(e) => setOpenMemoShortcut(e.target.value)}
+                                placeholder="例如: Alt+M"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                                onKeyDown={(e) => {
+                                    e.preventDefault();
+                                    const shortcut = getShortcutString(e);
+                                    if (shortcut) setOpenMemoShortcut(shortcut);
                                 }}
                             />
                         </div>

@@ -30,6 +30,7 @@ export interface AppStorage {
     shortcuts?: {
         quickSend?: string;
         globalClip?: string;
+        openMemo?: string;
     };
 
     enabledModules?: {

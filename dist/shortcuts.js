@@ -3,11 +3,13 @@
 
 // 默认快捷键配置
 let globalShortcut = 'Alt+S';
+let openMemoShortcut = 'Alt+M';
 
 // 从存储中加载快捷键配置
 chrome.storage.local.get(['shortcuts'], (result) => {
-    if (result.shortcuts && result.shortcuts.globalClip) {
-        globalShortcut = result.shortcuts.globalClip;
+    if (result.shortcuts) {
+        if (result.shortcuts.globalClip) globalShortcut = result.shortcuts.globalClip;
+        if (result.shortcuts.openMemo) openMemoShortcut = result.shortcuts.openMemo;
     }
 });
 
@@ -15,8 +17,9 @@ chrome.storage.local.get(['shortcuts'], (result) => {
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local' && changes.shortcuts) {
         const newShortcuts = changes.shortcuts.newValue;
-        if (newShortcuts && newShortcuts.globalClip) {
-            globalShortcut = newShortcuts.globalClip;
+        if (newShortcuts) {
+            if (newShortcuts.globalClip) globalShortcut = newShortcuts.globalClip;
+            if (newShortcuts.openMemo) openMemoShortcut = newShortcuts.openMemo;
         }
     }
 });
@@ -106,6 +109,15 @@ document.addEventListener('keydown', (event) => {
                 url: window.location.href,
                 selection: selection
             }
+        });
+    } else if (isShortcutMatch(pressedShortcut, openMemoShortcut)) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        // 发送消息打开侧边栏并切换到速记
+        chrome.runtime.sendMessage({
+            type: 'OPEN_SIDE_PANEL',
+            payload: { tab: 'memo' }
         });
     }
 }, true);
