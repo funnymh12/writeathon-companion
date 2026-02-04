@@ -33,6 +33,15 @@ const Clipper: React.FC = () => {
     const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
     const [viewFullImage, setViewFullImage] = useState<string | null>(null);
 
+    // Estimation
+    const [estimatedCards, setEstimatedCards] = useState(1);
+
+    useEffect(() => {
+        // Calculate estimation
+        const est = Math.ceil(content.length / 3800) || 1;
+        setEstimatedCards(est);
+    }, [content]);
+
     useEffect(() => {
         fetchSpaces();
         getCurrentTab();
@@ -439,27 +448,65 @@ const Clipper: React.FC = () => {
         try { new URL(u); return true; } catch { return false; }
     };
 
-    const smartSplit = (text: string, limit: number = 4000): string[] => {
+    const smartSplit = (text: string, limit: number = 3800): string[] => {
+        if (!text) return [];
         if (text.length <= limit) return [text];
 
         const chunks = [];
-        let remaining = text;
+        let currentIndex = 0;
 
-        while (remaining.length > 0) {
-            if (remaining.length <= limit) {
-                chunks.push(remaining);
+        while (currentIndex < text.length) {
+            let remaining = text.length - currentIndex;
+            if (remaining <= limit) {
+                chunks.push(text.substring(currentIndex));
                 break;
             }
 
-            // Find a good breaking point before the limit
-            // Try: Double newline (Paragraph) -> Newline -> Space -> Absolute limit
-            let breakPoint = remaining.lastIndexOf('\n\n', limit);
-            if (breakPoint === -1) breakPoint = remaining.lastIndexOf('\n', limit);
-            if (breakPoint === -1) breakPoint = remaining.lastIndexOf(' ', limit);
-            if (breakPoint === -1) breakPoint = limit; // Force split
+            // Search window: strictly limit length
+            // We want to find the best break point *within* the limit
+            const endBound = Math.min(currentIndex + limit, text.length);
+            const windowText = text.substring(currentIndex, endBound);
 
-            chunks.push(remaining.substring(0, breakPoint));
-            remaining = remaining.substring(breakPoint).trim(); // Remove leading whitespace for next chunk
+            let splitOffset = -1;
+
+            // Priority 1: Paragraph break (\n\n)
+            // We look for the *last* occurrence to maximize chunk size
+            let lastPara = windowText.lastIndexOf('\n\n');
+            if (lastPara !== -1) {
+                splitOffset = lastPara;
+            }
+            // Priority 2: Single Newline
+            else {
+                let lastLine = windowText.lastIndexOf('\n');
+                if (lastLine !== -1) {
+                    splitOffset = lastLine;
+                }
+                // Priority 3: Space (optional, maybe risky for CJK but acceptable)
+                else {
+                    let lastSpace = windowText.lastIndexOf(' ');
+                    if (lastSpace !== -1) {
+                        splitOffset = lastSpace;
+                    }
+                }
+            }
+
+            // Fallback: Force split at limit
+            if (splitOffset === -1) {
+                splitOffset = limit;
+            }
+
+            const splitIndex = currentIndex + splitOffset;
+
+            // Push chunk
+            chunks.push(text.substring(currentIndex, splitIndex));
+
+            // Move index
+            currentIndex = splitIndex;
+
+            // Skip immediate leading whitespace/newlines for the next chunk to be clean
+            while (currentIndex < text.length && (text[currentIndex] === '\n' || text[currentIndex] === ' ')) {
+                currentIndex++;
+            }
         }
         return chunks;
     };
@@ -483,7 +530,7 @@ const Clipper: React.FC = () => {
                 // 1. Process Images
                 const finalContent = await processContentImages(content);
 
-                const chunks = smartSplit(finalContent, 1800); // Conservative limit to leave room for footer
+                const chunks = smartSplit(finalContent, 3800); // User requested ~4000 limit, using 3800 for safety
                 const totalChunks = chunks.length;
 
                 // 3. Create First Card
@@ -660,8 +707,13 @@ const Clipper: React.FC = () => {
                                 className="w-full h-[360px] text-sm leading-7 text-gray-600 bg-white border border-gray-100 rounded-xl p-4 focus:ring-1 focus:ring-teal-100 focus:border-teal-200 resize-none font-serif shadow-sm scrollbar-thin outline-none"
                                 placeholder="内容将显示在这里..."
                             />
-                            <div className="absolute bottom-4 right-4 text-[10px] text-gray-300 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-gray-100">
-                                {content.length} 字
+                            <div className="absolute bottom-4 right-4 flex items-center gap-3">
+                                <span className="text-[10px] text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-100 font-bold">
+                                    预计 {estimatedCards} 张卡片
+                                </span>
+                                <span className="text-[10px] text-gray-400 bg-white/80 backdrop-blur px-2 py-1 rounded-full border border-gray-100">
+                                    {content.length} 字
+                                </span>
                             </div>
                         </div>
                     </div>
