@@ -4,11 +4,10 @@ import { storage } from '../utils/storage';
 import { Send, Loader2, Trash2, Bot, User, Sparkles, Copy, Check, ChevronDown, Settings as SettingsIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-interface Message {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: number;
-}
+import { aiService, ChatMessage } from '../services/ai-service';
+
+// Re-export or alias if needed, but we can reuse the type from service
+type Message = ChatMessage;
 
 const AIChat: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -62,18 +61,13 @@ const AIChat: React.FC = () => {
             if (!config?.apiKey) throw new Error('请先在设置中配置 API Key');
 
             let responseText = '';
-
-            if (config.provider === 'gemini') {
-                responseText = await callGemini(updatedMessages);
-            } else {
-                // Open AI Compatible (openai or custom)
-                responseText = await callOpenAICompatible(updatedMessages);
-            }
+            responseText = await aiService.generateResponse(updatedMessages);
 
             const aiMsg: Message = { role: 'assistant', content: responseText, timestamp: Date.now() };
             const finalMessages = [...updatedMessages, aiMsg];
             setMessages(finalMessages);
             saveHistory(finalMessages);
+
 
         } catch (err: any) {
             const errorMsg: Message = { role: 'assistant', content: `Error: ${err.message}`, timestamp: Date.now() };
@@ -81,60 +75,6 @@ const AIChat: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const callGemini = async (history: Message[]) => {
-        const cleanBaseUrl = (config.baseUrl || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
-        const url = `${cleanBaseUrl}/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
-
-        // Gemini format
-        const contents = history.map(m => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.content }]
-        }));
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || '请求失败');
-        }
-
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '无回复';
-    };
-
-    const callOpenAICompatible = async (history: Message[]) => {
-        const baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
-
-        const msgs = history.map(m => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            content: m.content
-        }));
-
-        const response = await fetch(`${baseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.apiKey}`
-            },
-            body: JSON.stringify({
-                model: config.model,
-                messages: msgs
-            })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || '请求失败');
-        }
-
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || '无回复';
     };
 
     const clearHistory = async () => {
@@ -300,6 +240,11 @@ const AIChat: React.FC = () => {
             </div>
         </div>
     );
+
+
+
+
+
 };
 
 export default AIChat;

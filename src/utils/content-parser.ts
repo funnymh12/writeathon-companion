@@ -327,6 +327,107 @@ const parseLLMConversation = (doc: Document, url: string): string | null => {
     return null;
 };
 
+// ----------------------------------------------------------------------------
+// Strategy: DeepSeek (chat.deepseek.com)
+// ----------------------------------------------------------------------------
+const parseDeepSeek = (doc: Document): string | null => {
+    let conversation: { role: string, text: string }[] = [];
+
+    // Helper to extract text
+    const turndownService = createTurndownService();
+    const extract = (el: Element | null) => {
+        if (!el) return '';
+        const clone = el.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('button, .sr-only, .aria-label, .ds-icon').forEach(b => b.remove());
+        return turndownService.turndown(clone.innerHTML);
+    };
+
+    // Selectors based on observations (Generic fallbacks included)
+    // DeepSeek typical structure: 
+    // User: [class*="chat-input"], [class*="user-message"]
+    // AI: [class*="assistant-message"]
+    // Thinking: [class*="thinking-process"], or distinctive styling
+
+    // We iterate through all message blocks
+    const messages = doc.querySelectorAll('[class*="fe-5c548f"], [class*="chat-message"], [data-testid="chat_message"]'); // "fe-5c548f" is a hash often seen, but we use fuzzy match
+
+    // If no specific classes found, try a broader search for the chat list container
+    const chatList = doc.querySelector('[class*="chat_list"], [class*="message_list"]') || doc.body;
+    const blocks = chatList.querySelectorAll('div > div'); // Rough approximation of turns
+
+    if (messages.length > 0) {
+        messages.forEach(msg => {
+            const html = msg.innerHTML.toLowerCase();
+            const text = extract(msg);
+            if (!text.trim()) return;
+
+            // Role detection
+            const isUser = html.includes('avatar-user') || msg.className.includes('user') || msg.querySelector('.ds-avatar-user');
+
+            if (isUser) {
+                conversation.push({ role: 'User', text });
+            } else {
+                // AI Turn - Inspect for Thinking Process
+                // DeepSeek often puts thinking in a separate collapsible or distinctive block
+
+                // 1. Try to find thinking block
+                const thinkingEl = msg.querySelector('.ds-thinking, [class*="thinking"]');
+                let thinkText = '';
+
+                // Clone for clean answer extraction
+                const clone = msg.cloneNode(true) as HTMLElement;
+
+                if (thinkingEl) {
+                    const tClone = thinkingEl.cloneNode(true) as HTMLElement;
+                    thinkText = extract(tClone);
+
+                    // Remove thinking from main clone
+                    const thinkInClone = clone.querySelector('.ds-thinking, [class*="thinking"]');
+                    thinkInClone?.remove();
+                }
+
+                // 2. Extract Answer
+                const answerText = extract(clone);
+
+                // 3. Format
+                if (thinkText.trim()) {
+                    conversation.push({
+                        role: 'AI',
+                        text: `> **[深度思考]**\n> \n> ${thinkText.replace(/\n/g, '\n> ')}`
+                    });
+                }
+
+                if (answerText.trim()) {
+                    conversation.push({ role: 'AI', text: answerText });
+                }
+            }
+        });
+    } else {
+        // Fallback: Generic "Ds" classes often used in DeepSeek
+        const potentialTurns = doc.querySelectorAll('.ds-markdown, .ds-user-message');
+        potentialTurns.forEach(turn => {
+            const isUser = turn.className.includes('user');
+            const text = extract(turn);
+            if (text) conversation.push({ role: isUser ? 'User' : 'AI', text });
+        });
+    }
+
+
+    if (conversation.length > 0) {
+        // Deduplicate
+        const unique: { role: string, text: string }[] = [];
+        let last = '';
+        conversation.forEach(item => {
+            if (item.text !== last && item.text.length > 2) {
+                unique.push(item);
+                last = item.text;
+            }
+        });
+        return unique.map(item => `**${item.role}**:\n${item.text}\n`).join('\n---\n\n');
+    }
+
+    return null;
+};
 
 // ----------------------------------------------------------------------------
 // Main Parser Entry Point
@@ -358,6 +459,15 @@ export const parseContent = async (html: string, url: string): Promise<string> =
         lowerUrl.includes('doubao')) {
         const llmMd = parseLLMConversation(doc, lowerUrl);
         if (llmMd) return llmMd;
+    }
+
+    // 2.1 Strategy: DeepSeek
+    if (lowerUrl.includes('deepseek')) {
+        const dsMd = parseDeepSeek(doc);
+        if (dsMd) return dsMd;
+        // Fallback to parseLLMConversation if specific strategy fails but URL matches
+        const fallback = parseLLMConversation(doc, lowerUrl);
+        if (fallback) return fallback;
     }
 
     // 3. Fallback: General Readability

@@ -3,7 +3,7 @@ import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { handlePasteImage } from '../utils/imageUtils';
 import { formatLogFooter } from '../utils/textUtils';
-import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles, Image as ImageIcon, Mic } from 'lucide-react';
 
 const Memo: React.FC = () => {
     const [spaces, setSpaces] = useState<Space[]>([]);
@@ -16,6 +16,8 @@ const Memo: React.FC = () => {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [error, setError] = useState('');
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef<any>(null);
 
     const [quickSendKey, setQuickSendKey] = useState('Ctrl+Enter');
 
@@ -35,6 +37,7 @@ const Memo: React.FC = () => {
         });
 
         // Listen for storage changes
+        // Listen for storage changes
         const listener = (changes: any) => {
             if (changes.shortcuts && changes.shortcuts.newValue?.quickSend) {
                 setQuickSendKey(changes.shortcuts.newValue.quickSend);
@@ -43,6 +46,101 @@ const Memo: React.FC = () => {
         chrome.storage.onChanged.addListener(listener);
         return () => chrome.storage.onChanged.removeListener(listener);
     }, []);
+
+    // Cleanup recognition on unmount
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+        };
+    }, []);
+
+    // Draft Logic: Auto-save & Restore
+    useEffect(() => {
+        // Restore
+        const saved = localStorage.getItem('writeathon_memo_draft');
+        if (saved) {
+            try {
+                const draft = JSON.parse(saved);
+                if (draft.content) setContent(draft.content);
+                if (draft.title) setTitle(draft.title);
+                if (draft.quote && !quote) setQuote(draft.quote); // Only if no current quote (e.g. from selection)
+            } catch (e) {
+                console.error('Failed to parse draft', e);
+            }
+        }
+    }, []); // Only on mount
+
+    useEffect(() => {
+        // Auto-save
+        const draft = { content, title, quote };
+        if (content || title || quote) {
+            localStorage.setItem('writeathon_memo_draft', JSON.stringify(draft));
+        }
+    }, [content, title, quote]);
+
+    const toggleVoiceInput = () => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
+
+        if (!('webkitSpeechRecognition' in window)) {
+            setError('浏览器不支持语音输入');
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
+        const recognition = new (window as any).webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'zh-CN'; // Default to Chinese
+
+        recognition.onstart = () => {
+            setIsListening(true);
+            setError('');
+        };
+
+        recognition.onresult = (event: any) => {
+            let finalTranscript = '';
+            // Only capture final results to avoid jitter using 'continuous'
+            // But for realtime feel, we could use interim. 
+            // Strategy: append only final results to content.
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                setContent(prev => prev + finalTranscript);
+                // Scroll to bottom?
+                if (contentRef.current) {
+                    contentRef.current.scrollTop = contentRef.current.scrollHeight;
+                }
+            }
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error('Speech recognition error', event.error);
+            if (event.error === 'not-allowed') {
+                setError('请允许麦克风权限');
+            } else {
+                setError('语音识别错误: ' + event.error);
+            }
+            setIsListening(false);
+            setTimeout(() => setError(''), 3000);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+    };
 
     // Auto-resize Quote
     useEffect(() => {
@@ -281,6 +379,7 @@ const Memo: React.FC = () => {
                     setContent('');
                     setQuote('');
                     setTitle('');
+                    localStorage.removeItem('writeathon_memo_draft'); // Clear draft
                     setStatus('success');
                     setTimeout(() => setStatus('idle'), 3000);
                 } else {
@@ -421,6 +520,16 @@ const Memo: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3">
+                    <button
+                        onClick={toggleVoiceInput}
+                        className={`p-2.5 rounded-full transition-all ${isListening
+                            ? 'bg-red-50 text-red-500 animate-pulse ring-2 ring-red-100'
+                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                            }`}
+                        title={isListening ? "停止听写" : "语音输入"}
+                    >
+                        <Mic className={`h-5 w-5 ${isListening ? 'fill-current' : ''}`} />
+                    </button>
                     <button
                         onClick={handleSend}
                         disabled={sending || uploadingImage || (!content.trim() && !quote.trim())}
