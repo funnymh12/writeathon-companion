@@ -53,18 +53,11 @@ function getShortcutString(event) {
 function isShortcutMatch(pressed, configured) {
     if (!pressed || !configured) return false;
 
-    const parse = (s) => new Set(s.toLowerCase().split('+').map(p => p.trim()));
-    const pSet = parse(pressed);
-    const cSet = parse(configured);
-
-    if (pSet.size !== cSet.size) return false;
-    for (const k of pSet) {
-        if (!cSet.has(k)) return false;
-    }
-    return true;
+    const normalize = (s) => s.toLowerCase().split('+').map(p => p.trim()).sort().join('+');
+    return normalize(pressed) === normalize(configured);
 }
 
-// 监听键盘事件
+// 监听键盘事件 (Use Capture phase to ensure we get the event before the page stops it)
 document.addEventListener('keydown', (event) => {
     const pressedShortcut = getShortcutString(event);
 
@@ -115,4 +108,4 @@ document.addEventListener('keydown', (event) => {
             }
         });
     }
-});
+}, true);
