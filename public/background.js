@@ -458,5 +458,5 @@ function formatLogFooter(content) {
     const hh = pad(now.getHours());
     const min = pad(now.getMinutes());
     const count = content ? content.length : 0;
-    return `\n\nlog：#${yyyy}${mm}${dd}${hh}${min}，${count}`;
+    return `\n\nlog：${yyyy}${mm}${dd}${hh}${min}，${count}`;
 }

@@ -548,35 +548,29 @@ const Clipper: React.FC = () => {
                 if (!res.success) throw new Error(res.message);
 
                 // 4. Threading (Extensions)
+                // 4. Threading (Append to same card)
+                // Using createCard with SAME title triggers the "Append" behavior in Writeathon API.
                 if (totalChunks > 1) {
-                    let parentId = res.data?.id || res.data?._id;
+                    for (let i = 1; i < totalChunks; i++) {
+                        setMessage(`正在追加第 ${i + 1}/${totalChunks} 部分...`);
+                        let chunkContent = chunks[i];
+                        const chunkFooter = formatLogFooter(chunkContent);
+                        chunkContent += chunkFooter;
 
-                    // Fallback: If API doesn't return ID, fetch recent cards to find it
-                    if (!parentId) {
-                        const recentRes = await client.getRecentCards(false, selectedSpace || undefined);
-                        if (recentRes.success && recentRes.data && recentRes.data.length > 0) {
-                            const match = recentRes.data.find(c => c.title === title) || recentRes.data[0];
-                            parentId = match._id || match.id;
+                        // Use createCard with existing title to APPEND
+                        const appendRes = await client.createCard({
+                            title: title, // Must match original title exactly
+                            content: chunkContent,
+                            space: selectedSpace || undefined
+                        });
+
+                        if (!appendRes.success) {
+                            throw new Error(`追加第 ${i + 1} 部分失败: ${appendRes.message}`);
                         }
-                    }
-
-                    if (parentId) {
-                        for (let i = 1; i < totalChunks; i++) {
-                            setMessage(`正在追加第 ${i + 1}/${totalChunks} 部分...`);
-                            let chunkContent = chunks[i];
-                            const chunkFooter = formatLogFooter(chunkContent);
-                            chunkContent += chunkFooter;
-
-                            const extendRes = await client.extendCard(parentId, chunkContent, `${sourceTitle || title} (${i + 1})`);
-                            if (!extendRes.success) {
-                                throw new Error(`追加第 ${i + 1} 部分失败: ${extendRes.message}`);
-                            }
-                        }
-                    } else {
-                        throw new Error('无法获取主卡片ID，后续内容无法追加。');
                     }
                 }
 
+                // (Logic migrated to above block)
             } else if (mode === 'image') {
                 // ... (existing image logic is fine, it uses the same uploadImage util) ...
                 if (selectedImages.size === 0) throw new Error('请至少选择一张图片');
