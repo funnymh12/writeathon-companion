@@ -43,6 +43,9 @@
 - **DeepSeek 支持 (`content-parser.ts`)**:
     - 新增 `chat.deepseek.com` 解析策略。
     - 智能提取 `<think>` 思考过程，并以引用块 `> [深度思考]` 形式展示，与最终回复区分。
+- **视觉突破: 极光玻璃 (Design Breakthrough)**:
+    - **Aurora Background**: 引入了动态的 Teal/Purple/Blue 极光渐变背景，通过 CSS Keyframe 动画让背景缓慢漂浮和呼吸。
+    - **Living UI**: 界面容器透明度调整，配合 noise 纹理，赋予插件“活着”的通透感，大幅提升高级感。
 - **离线草稿 (`Memo.tsx`)**:
     - **安心模式**: 内容、标题和引用会自动保存到 `localStorage`。
     - **自动恢复**: 意外关闭或刷新后，再次打开插件可无缝恢复未发送的草稿。
