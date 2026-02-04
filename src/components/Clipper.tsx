@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { uploadImage } from '../utils/imageUtils';
+import { formatLogFooter } from '../utils/textUtils';
 import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X, RotateCw, Globe } from 'lucide-react';
 
 type ClipMode = 'article' | 'image';
@@ -482,9 +483,12 @@ const Clipper: React.FC = () => {
                 // 1. Process Images
                 const finalContent = await processContentImages(content);
 
-                // 2. Split
+                // Add footer (Timestamp + WordCount)
+                const contentWithFooter = finalContent + formatLogFooter(finalContent);
+
+                // 2. Split (Limit 2000 chars for safety)
                 setMessage('正在保存...');
-                const chunks = smartSplit(finalContent, 4000);
+                const chunks = smartSplit(contentWithFooter, 2000);
 
                 // 3. Create First Card
                 let firstChunk = chunks[0];

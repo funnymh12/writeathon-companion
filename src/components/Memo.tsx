@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { handlePasteImage } from '../utils/imageUtils';
+import { formatLogFooter } from '../utils/textUtils';
 import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles, Image as ImageIcon } from 'lucide-react';
 
 const Memo: React.FC = () => {
@@ -257,6 +258,9 @@ const Memo: React.FC = () => {
                 } else {
                     finalContent = content.trim();
                 }
+
+                // Append Footer
+                finalContent += formatLogFooter(finalContent);
 
                 const response = await client.createCard({
                     content: finalContent,

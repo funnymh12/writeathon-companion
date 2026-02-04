@@ -64,7 +64,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 userId,
                 spaceId: selectedSpaceId,
                 title: `剪藏 ${new Date().toLocaleString('zh-CN')}`,
-                content: `${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})`,
+                content: `${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})` + formatLogFooter(`${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})`),
                 attachments: [{
                     type: 'link',
                     title: pageTitle,
@@ -110,7 +110,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 userId,
                 spaceId: selectedSpaceId,
                 title: pageTitle,
-                content: `![图片](${finalImageUrl})`,
+                content: `![图片](${finalImageUrl})` + formatLogFooter(`![图片](${finalImageUrl})`),
                 attachments: [{
                     type: 'image',
                     title: '来自 ' + pageTitle,
@@ -132,7 +132,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 userId,
                 spaceId: selectedSpaceId,
                 title: pageTitle,
-                content: `[${linkText}](${linkUrl})`,
+                content: `[${linkText}](${linkUrl})` + formatLogFooter(`[${linkText}](${linkUrl})`),
                 attachments: [{
                     type: 'link',
                     title: linkText,
@@ -341,7 +341,7 @@ async function handleQuickClip(tabId, pageTitle, pageUrl, selectedText) {
             userId,
             spaceId: selectedSpaceId,
             title: `剪藏 ${new Date().toLocaleString('zh-CN')}`,
-            content: `${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})`,
+            content: `${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})` + formatLogFooter(`${selectedText}\n\n> 来源: [${pageTitle}](${pageUrl})`),
             attachments: [{
                 type: 'link',
                 title: pageTitle,
@@ -447,4 +447,16 @@ function showNotification(tabId, title, message, isError = false) {
             args: [title, message, isError]
         }).catch(console.error);
     }
+}
+
+function formatLogFooter(content) {
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const yyyy = now.getFullYear();
+    const mm = pad(now.getMonth() + 1);
+    const dd = pad(now.getDate());
+    const hh = pad(now.getHours());
+    const min = pad(now.getMinutes());
+    const count = content ? content.length : 0;
+    return `\n\nlog：#${yyyy}${mm}${dd}${hh}${min}，${count}`;
 }

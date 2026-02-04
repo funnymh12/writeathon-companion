@@ -22,6 +22,10 @@ const Settings: React.FC = () => {
     const [qiniuDomain, setQiniuDomain] = useState('');
     const [qiniuRegion, setQiniuRegion] = useState('z0');
 
+    // Shortcuts
+    const [globalClipShortcut, setGlobalClipShortcut] = useState('Alt+S');
+    const [quickSendShortcut, setQuickSendShortcut] = useState('Ctrl+Enter');
+
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<string>('');
     const [statusMsg, setStatusMsg] = useState('');
@@ -61,6 +65,11 @@ const Settings: React.FC = () => {
             setImageProvider('imgbb');
             setImgbbApiKey(data.imgbbApiKey);
         }
+
+        if (data.shortcuts) {
+            if (data.shortcuts.globalClip) setGlobalClipShortcut(data.shortcuts.globalClip);
+            if (data.shortcuts.quickSend) setQuickSendShortcut(data.shortcuts.quickSend);
+        }
     };
 
     const handleSave = async () => {
@@ -95,7 +104,11 @@ const Settings: React.FC = () => {
                 baseUrl,
                 aiConfig,
                 imageConfig,
-                imgbbApiKey // Keep strictly for rollback/compatibility if needed, but primary is imageConfig
+                imgbbApiKey, // Keep strictly for rollback/compatibility if needed, but primary is imageConfig
+                shortcuts: {
+                    globalClip: globalClipShortcut,
+                    quickSend: quickSendShortcut
+                }
             });
 
             setStatus('success');
@@ -369,10 +382,26 @@ const Settings: React.FC = () => {
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <Command className="h-3.5 w-3.5" /> 快捷键
                     </h3>
-                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                        <div className="flex justify-between items-center text-sm text-gray-600">
-                            <span>快速发送 Memo</span>
-                            <kbd className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-lg font-mono text-xs font-bold text-gray-500">Ctrl + Enter</kbd>
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-gray-700">发送选中文本 (全局)</label>
+                            <input
+                                type="text"
+                                value={globalClipShortcut}
+                                onChange={(e) => setGlobalClipShortcut(e.target.value)}
+                                placeholder="例如: Alt+S"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-gray-700">快速发送 Memo (应用内)</label>
+                            <input
+                                type="text"
+                                value={quickSendShortcut}
+                                onChange={(e) => setQuickSendShortcut(e.target.value)}
+                                placeholder="例如: Ctrl+Enter"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                            />
                         </div>
                     </div>
                 </section>
