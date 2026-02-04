@@ -238,6 +238,7 @@ const Clipper: React.FC = () => {
         }
     };
 
+    // Advanced Clipping Logic
     const scrapePageContent = async () => {
         setStatus('loading');
         setMessage('正在解析当前页面...');
@@ -249,86 +250,44 @@ const Clipper: React.FC = () => {
                 return;
             }
 
+            // 1. Get filtered HTML from the tab
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                    // Simple DOM to Markdown Converter ensuring images are preserved
-                    const cleanNode = (node: Node): string => {
-                        if (node.nodeType === Node.TEXT_NODE) {
-                            return node.textContent || '';
-                        }
-                        if (node.nodeType !== Node.ELEMENT_NODE) return '';
+                    // Basic cleanup in the tab context before serialization
+                    const clone = document.cloneNode(true) as Document;
 
-                        const el = node as HTMLElement;
-                        const tagName = el.tagName.toLowerCase();
+                    // Remove obvious junk to save data transfer
+                    const junkTags = ['script', 'style', 'noscript', 'iframe', 'svg', 'button', 'input', 'textarea'];
+                    junkTags.forEach(tag => {
+                        clone.querySelectorAll(tag).forEach(el => el.remove());
+                    });
 
-                        // Hidden elements
-                        if (getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return '';
-                        // Skip scripts/styles/nav/etc
-                        if (['script', 'style', 'nav', 'footer', 'header', 'aside', 'noscript', 'iframe', 'svg'].includes(tagName)) return '';
+                    // Resolve lazy loaded images
+                    clone.querySelectorAll('img').forEach(img => {
+                        if (img.dataset.src) img.src = img.dataset.src;
+                        if (img.dataset.original) img.src = img.dataset.original;
+                    });
 
-                        let childrenText = '';
-                        el.childNodes.forEach(child => {
-                            childrenText += cleanNode(child);
-                        });
+                    // Absolute URLs
+                    clone.querySelectorAll('a').forEach(a => {
+                        try { a.href = a.href; } catch { }
+                    });
+                    clone.querySelectorAll('img').forEach(img => {
+                        try { img.src = img.src; } catch { }
+                    });
 
-                        switch (tagName) {
-                            case 'h1': return `\n# ${childrenText}\n\n`;
-                            case 'h2': return `\n## ${childrenText}\n\n`;
-                            case 'h3': return `\n### ${childrenText}\n\n`;
-                            case 'h4': return `\n#### ${childrenText}\n\n`;
-                            case 'h5': return `\n##### ${childrenText}\n\n`;
-                            case 'h6': return `\n###### ${childrenText}\n\n`;
-                            case 'p': return `\n${childrenText}\n\n`;
-                            case 'br': return '\n';
-                            case 'hr': return '\n---\n';
-                            case 'blockquote': return `\n> ${childrenText}\n\n`;
-                            case 'code': return `\`${childrenText}\``;
-                            case 'pre': return `\n\`\`\`\n${childrenText}\n\`\`\`\n\n`;
-                            case 'strong':
-                            case 'b': return `**${childrenText}**`;
-                            case 'em':
-                            case 'i': return `*${childrenText}*`;
-                            case 'a': {
-                                const href = el.getAttribute('href');
-                                if (!href || href.startsWith('javascript:')) return childrenText;
-                                return `[${childrenText}](${href})`;
-                            }
-                            case 'img': {
-                                const src = el.getAttribute('src');
-                                // Use data-src if src is missing/placeholder (common in lazy load)
-                                const realSrc = src || el.getAttribute('data-src') || el.getAttribute('data-original');
-                                if (!realSrc || realSrc.startsWith('data:')) return '';
-                                const alt = el.getAttribute('alt') || '';
-                                return `![${alt}](${realSrc})`;
-                            }
-                            case 'ul': return `\n${childrenText}\n`;
-                            case 'ol': return `\n${childrenText}\n`;
-                            case 'li': return `- ${childrenText}\n`;
-                            case 'div':
-                            case 'section':
-                            case 'article':
-                            case 'main':
-                                return `\n${childrenText}\n`;
-                            default: return childrenText;
-                        }
-                    };
-
-                    // Try to find the main content
-                    let root: HTMLElement = document.body;
-                    const article = document.querySelector('article');
-                    const main = document.querySelector('main');
-                    const content = document.querySelector('.content') || document.querySelector('.post-content') || document.querySelector('#content');
-                    if (article) root = article;
-                    else if (main) root = main;
-                    else if (content) root = content as HTMLElement;
-
-                    return cleanNode(root).replace(/\n{3,}/g, '\n\n').trim();
+                    return clone.documentElement.outerHTML;
                 }
             });
 
             if (results && results[0]) {
-                setContent(results[0].result as string);
+                const html = results[0].result as string;
+                // 2. Process in Side Panel using robust libraries/logic
+                const markdown = await processHtmlToMarkdown(html, tab.url || '');
+                setContent(markdown);
+
+                if (tab.title) setSourceTitle(tab.title);
             }
             setStatus('idle');
             setMessage('');
@@ -337,6 +296,103 @@ const Clipper: React.FC = () => {
             setStatus('error');
             setMessage('解析当前页面失败');
         }
+    };
+
+    const processHtmlToMarkdown = async (html: string, baseUrl: string): Promise<string> => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // 2.1 Remove Blacklisted Elements (Comments, Ads, Sidebar, etc.)
+        const trashSelectors = [
+            '.ad', '.ads', '.advertisement', '.banner',
+            '.comment', '.comments', '#comments', '.comment-list',
+            '.sidebar', '#sidebar', '.widget',
+            'nav', 'footer', '.footer',
+            '.menu', '.nav', '.navigation', '.toc',
+            '.share-buttons', '.social-media',
+            '.copyright', '.meta', '.related-posts'
+        ];
+        trashSelectors.forEach(sel => {
+            doc.querySelectorAll(sel).forEach(el => el.remove());
+        });
+
+        // 2.2 Smart Extract (Readability-lite)
+        let root: HTMLElement = doc.body;
+        // Priority 1: <article>
+        const article = doc.querySelector('article');
+        // Priority 2: <main> or role="main"
+        const main = doc.querySelector('main') || doc.querySelector('[role="main"]');
+        // Priority 3: Common content classes
+        const contentDiv = doc.querySelector('.content') || doc.querySelector('.post-content') || doc.querySelector('.article-content') || doc.querySelector('#content');
+
+        if (article) root = article as HTMLElement;
+        else if (main) root = main as HTMLElement;
+        else if (contentDiv) root = contentDiv as HTMLElement;
+        else {
+            // Priority 4: Paragraph Scoring (Find the parent with most text)
+            const paragraphs = Array.from(doc.querySelectorAll('p'));
+            const scores = new Map<HTMLElement, number>();
+            let maxScore = 0;
+            let bestCandidate = doc.body;
+
+            paragraphs.forEach(p => {
+                const textLen = p.textContent?.length || 0;
+                if (textLen < 20) return; // Ignore short lines
+
+                let parent = p.parentElement;
+                if (parent) {
+                    const currentScore = scores.get(parent) || 0;
+                    const newScore = currentScore + textLen;
+                    scores.set(parent, newScore);
+
+                    if (newScore > maxScore) {
+                        maxScore = newScore;
+                        bestCandidate = parent;
+                    }
+                }
+            });
+            // If we found a distinct best candidate (e.g. > 500 chars), use it
+            if (maxScore > 500) {
+                root = bestCandidate;
+            }
+        }
+
+        // 2.3 Configure Turndown
+        // We dynamically import turndown or assume it's available via import at top
+        const TurndownService = (await import('turndown')).default;
+        const turndownService = new TurndownService({
+            headingStyle: 'atx',
+            codeBlockStyle: 'fenced',
+            bulletListMarker: '-',
+            emDelimiter: '*'
+        });
+
+        // Clean rules
+        turndownService.addRule('removeEmpty', {
+            filter: ['strong', 'b', 'em', 'i', 'a'],
+            replacement: function (content) {
+                return content.trim() === '' ? '' : content;
+            }
+        });
+
+        turndownService.addRule('removeScripts', {
+            filter: ['script', 'style', 'noscript', 'iframe', 'button', 'input', 'form'],
+            replacement: () => ''
+        });
+
+        // 2.4 Convert
+        let markdown = turndownService.turndown(root.innerHTML);
+
+        // 2.5 Regex Cleanup
+        markdown = markdown
+            .replace(/\*\*\s+\*\*/g, '')          // ** **
+            .replace(/\*\*\*\*/g, '')             // ****
+            .replace(/\n{3,}/g, '\n\n')           // Too many newlines
+            .replace(/!\[\]\(data:image.*?\)/g, '') // Base64 trash
+            .replace(/^\[\]\(.*?\)$/gm, '')       // Empty links
+            .trim();
+
+        return markdown;
     };
 
     const scrapeImages = async () => {
