@@ -76,8 +76,21 @@ export class ReadabilityLite {
     }
 
     private grabArticle(): HTMLElement | null {
+        // 0. High Confidence Selectors (Platform Specific Shortcuts)
+        // WeChat: #js_content, Zhihu: .QuestionAnswer-content
+        const knownSelectors = ['#js_content', '.rich_media_content', '.QuestionAnswer-content', '.article-content'];
+        for (const sel of knownSelectors) {
+            const el = this.doc.querySelector(sel) as HTMLElement;
+            if (el && (el.innerText || '').length > 200) {
+                console.log('ReadabilityLite: Found high-confidence container:', sel);
+                this.cleanArticle(el);
+                return el;
+            }
+        }
+
         // We score paragraphs and their parents
-        const paragraphs = Array.from(this.doc.querySelectorAll('p, td, pre'));
+        // Expanded to include 'section' for modern layouts (like WeChat/Notion-like sites)
+        const paragraphs = Array.from(this.doc.querySelectorAll('p, td, pre, section, blockquote'));
         const candidates = new Map<HTMLElement, number>();
 
         paragraphs.forEach(node => {
