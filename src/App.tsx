@@ -84,7 +84,7 @@ function App() {
             </div>
 
             {/* Header - Glass Effect */}
-            <header className="glass absolute top-0 left-0 right-0 h-14 z-10 flex items-center justify-between px-5 transition-all">
+            <header className="glass absolute top-0 left-0 right-0 h-14 z-30 flex items-center justify-between px-5 transition-all">
                 <div className="flex items-center gap-3">
                     {activeTab === 'settings' && isAuth ? (
                         <button

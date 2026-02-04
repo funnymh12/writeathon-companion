@@ -597,11 +597,11 @@ const Clipper: React.FC = () => {
                         <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
                     </button> */}
 
-                    <div className="relative group">
+                    <div className="relative flex items-center">
                         <select
                             value={selectedSpace}
                             onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="bg-transparent font-medium text-xs text-slate-500 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 pl-1 appearance-none text-right max-w-[100px] truncate"
+                            className="appearance-none bg-teal-50/50 hover:bg-teal-100/50 border border-teal-100/50 rounded-xl px-3 py-1.5 text-[11px] font-bold text-teal-700 cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-300/50 max-w-[120px] truncate"
                         >
                             {spaces.map((space) => (
                                 <option key={space._id || space.id} value={space._id || space.id}>
@@ -609,7 +609,7 @@ const Clipper: React.FC = () => {
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none group-hover:text-teal-500 transition-colors" />
+                        <ChevronDown className="absolute right-2.5 h-3.5 w-3.5 text-teal-600 pointer-events-none" />
                     </div>
                 </div>
             </div>

@@ -543,7 +543,7 @@ const Recent: React.FC = () => {
 
                     {/* Space Select */}
                     {spaces.length > 0 && activeTab === 'recent' && (
-                        <div className="relative text-xs">
+                        <div className="relative flex items-center text-xs">
                             <select
                                 value={selectedSpace}
                                 onChange={async (e) => {
@@ -552,15 +552,14 @@ const Recent: React.FC = () => {
                                     const spaceName = spaces.find(s => (s._id || s.id) === newSpaceId)?.title || '默认空间';
                                     await storage.set({ selectedSpaceId: newSpaceId, selectedSpaceName: spaceName });
                                 }}
-                                className="appearance-none bg-gray-50/50 border border-gray-100 pl-3 pr-7 py-2 rounded-xl text-gray-600 font-medium focus:outline-none focus:border-teal-500 hover:bg-gray-100 transition-colors cursor-pointer max-w-[100px] truncate"
+                                className="appearance-none bg-teal-50/50 hover:bg-teal-100/50 border border-teal-100/30 rounded-xl px-4 py-2 text-teal-700 font-bold transition-all pr-10 outline-none focus:ring-2 focus:ring-teal-500/10 cursor-pointer max-w-[130px] truncate"
                             >
                                 <option value="">所有空间</option>
                                 {spaces.map(s => {
-                                    const title = s.title.length > 6 ? s.title.substring(0, 6) + '..' : s.title;
-                                    return <option key={s._id || s.id} value={s._id || s.id}>{title}</option>;
+                                    return <option key={s._id || s.id} value={s._id || s.id}>{s.title}</option>;
                                 })}
                             </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+                            <ChevronDown className="absolute right-3 h-4 w-4 text-teal-600 pointer-events-none" />
                         </div>
                     )}
                     {activeTab === 'pick' && (

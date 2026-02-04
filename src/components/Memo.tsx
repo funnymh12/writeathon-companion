@@ -334,25 +334,17 @@ const Memo: React.FC = () => {
             <div className="px-5 py-3 flex items-center justify-between glass z-10">
                 <div className="flex items-center gap-2 group relative">
                     <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Storage</span>
-                    <div className="relative">
+                    <div className="relative flex items-center">
                         <select
                             value={selectedSpace}
                             onChange={(e) => handleSpaceChange(e.target.value)}
-                            disabled={loading}
-                            className="bg-transparent font-medium text-xs text-gray-700 focus:outline-none cursor-pointer hover:text-teal-600 transition-colors py-1 pr-4 appearance-none"
+                            className="appearance-none bg-teal-50/50 hover:bg-teal-100/50 border border-teal-100/50 rounded-lg px-3 py-1 text-[11px] font-bold text-teal-700 cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-300/50"
                         >
-                            <option value="">默认空间</option>
-                            {spaces.filter(s => s.title !== '默认空间').map((space) => {
-                                const id = space._id || space.id;
-                                const title = space.title.length > 10 ? space.title.substring(0, 10) + '...' : space.title;
-                                return (
-                                    <option key={id} value={id}>
-                                        {title}
-                                    </option>
-                                );
-                            })}
+                            {spaces.map(s => (
+                                <option key={s._id || s.id} value={s._id || s.id}>{s.title}</option>
+                            ))}
                         </select>
-                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-300 pointer-events-none group-hover:text-teal-500 transition-colors" />
+                        <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-teal-600 pointer-events-none" />
                     </div>
                 </div>
 
