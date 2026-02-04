@@ -113,6 +113,9 @@ const Recent: React.FC = () => {
 
                 setCards(finalCards);
                 setFilteredCards(finalCards);
+
+                // Trigger hydration to fetch content for these cards in background
+                hydrateCards(finalCards);
             }
         } catch (err) {
             console.error('获取最近卡片失败', err);
@@ -140,6 +143,55 @@ const Recent: React.FC = () => {
             }
         } catch (err) {
             console.error('获取空间列表失败', err);
+        }
+    };
+
+    // Hydrate card contents in background to enable search and preview
+    const hydrateCards = async (initialCards: Card[]) => {
+        const toHydrate = initialCards.filter(c => !c.content); // Only fetch if missing content
+        if (toHydrate.length === 0) return;
+
+        try {
+            const data = await storage.get();
+            if (data.token && data.userId) {
+                const client = new WriteathonClient(data.token, data.userId);
+
+                // Fetch in batches to avoid rate limits
+                const batchSize = 5;
+                for (let i = 0; i < toHydrate.length; i += batchSize) {
+                    const batch = toHydrate.slice(i, i + batchSize);
+
+                    const promises = batch.map(card =>
+                        client.getCardDetail(card._id || card.id || '').catch(() => ({ success: false, data: null } as any))
+                    );
+
+                    const results = await Promise.all(promises);
+
+                    // Update state incrementally
+                    setCards(prevCards => {
+                        const newCards = [...prevCards];
+                        let hasChanges = false;
+
+                        results.forEach((res, idx) => {
+                            if (res && res.success && res.data) {
+                                const originalId = batch[idx]._id || batch[idx].id;
+                                const targetIndex = newCards.findIndex(c => (c._id || c.id) === originalId);
+                                if (targetIndex !== -1) {
+                                    // Merge detail data (crucially, the content)
+                                    newCards[targetIndex] = { ...newCards[targetIndex], ...res.data };
+                                    hasChanges = true;
+                                }
+                            }
+                        });
+                        return hasChanges ? newCards : prevCards;
+                    });
+
+                    // Small delay between batches to be nice to API
+                    await new Promise(r => setTimeout(r, 200));
+                }
+            }
+        } catch (err) {
+            console.warn('Hydration warning', err);
         }
     };
 
