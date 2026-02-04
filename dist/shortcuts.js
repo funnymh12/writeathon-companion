@@ -49,10 +49,19 @@ function getShortcutString(event) {
     return parts.join('+');
 }
 
-// Check match case-insensitively
+// Check match case-insensitively and order-independently
 function isShortcutMatch(pressed, configured) {
     if (!pressed || !configured) return false;
-    return pressed.toLowerCase() === configured.toLowerCase();
+
+    const parse = (s) => new Set(s.toLowerCase().split('+').map(p => p.trim()));
+    const pSet = parse(pressed);
+    const cSet = parse(configured);
+
+    if (pSet.size !== cSet.size) return false;
+    for (const k of pSet) {
+        if (!cSet.has(k)) return false;
+    }
+    return true;
 }
 
 // 监听键盘事件

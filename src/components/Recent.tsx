@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Card, Space } from '../utils/api';
 import { storage } from '../utils/storage';
+import { formatLogFooter } from '../utils/textUtils';
 import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw, Copy, FilePlus, CornerDownLeft, Clock } from 'lucide-react';
 
 type View = 'list' | 'detail' | 'pick';
@@ -207,7 +208,7 @@ const Recent: React.FC = () => {
                 const client = new WriteathonClient(data.token, data.userId);
                 const response = await client.extendCard(
                     selectedCard._id || selectedCard.id || '',
-                    extensionContent,
+                    extensionContent + formatLogFooter(extensionContent),
                     extensionTitle.trim() || undefined
                 );
 
@@ -244,7 +245,7 @@ const Recent: React.FC = () => {
                 // "Create" with existing title appends to the card
                 const response = await client.createCard({
                     title: selectedCard.title,
-                    content: extensionContent,
+                    content: extensionContent + formatLogFooter(extensionContent),
                     space: selectedSpace || undefined
                 });
 
