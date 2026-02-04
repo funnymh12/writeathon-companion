@@ -40,12 +40,12 @@ const Recent: React.FC = () => {
     }, [selectedSpace]); // Re-fetch when space changes
 
     useEffect(() => {
-        // Filter cards based on search query
+        // Filter cards based on search query (Title & Content)
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             const filtered = cards.filter(card =>
-                card.title?.toLowerCase().includes(query) ||
-                card.content?.toLowerCase().includes(query)
+                (card.title && card.title.toLowerCase().includes(query)) ||
+                (card.content && card.content.toLowerCase().includes(query))
             );
             setFilteredCards(filtered);
         } else {
@@ -425,7 +425,7 @@ const Recent: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-transparent relative">
             {/* Header Area */}
-            <div className="px-5 py-4 glass z-10 sticky top-0 space-y-4">
+            <div className="px-5 py-4 glass z-10 space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="p-1 bg-slate-100/50 rounded-xl flex gap-1">
                         <button
@@ -472,7 +472,7 @@ const Recent: React.FC = () => {
                                 placeholder="搜索..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-9 pl-9 pr-3 bg-gray-50/50 border border-gray-100 rounded-xl text-xs font-medium focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all placeholder:text-gray-400"
+                                className="w-full h-9 pl-9 pr-3 bg-gray-50/50 border border-gray-100 rounded-xl text-xs font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all placeholder:text-gray-400"
                             />
                             {searchQuery && (
                                 <button
@@ -558,7 +558,7 @@ const Recent: React.FC = () => {
                                                 {card.title || '无标题'}
                                             </h3>
                                             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
-                                                {card.content || '...'}
+                                                {card.content ? (card.content.length > 80 ? card.content.substring(0, 80) + '...' : card.content) : '(无正文)'}
                                             </p>
                                         </div>
                                         {card.updated && (

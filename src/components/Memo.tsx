@@ -331,7 +331,7 @@ const Memo: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-transparent relative">
             {/* Top Bar: Space Selector */}
-            <div className="px-5 py-3 flex items-center justify-between glass z-10 sticky top-0">
+            <div className="px-5 py-3 flex items-center justify-between glass z-10">
                 <div className="flex items-center gap-2 group relative">
                     <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Storage</span>
                     <div className="relative">
@@ -429,7 +429,8 @@ const Memo: React.FC = () => {
             </div>
 
             {/* Bottom Toolbar */}
-            <div className="px-5 py-4 flex items-center justify-between glass z-20 sticky bottom-0 border-t-0 bg-white/60">
+            {/* Bottom Toolbar */}
+            <div className="px-5 py-4 flex items-center justify-between glass z-20 border-t-0 bg-white/60 mt-auto">
                 <div className="text-[10px] text-slate-400 flex items-center gap-2">
                     {/* Status / Hints */}
                     {status === 'error' ? (
