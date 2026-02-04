@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { WriteathonClient, Space, Card } from '../utils/api';
 import { storage } from '../utils/storage';
+import { formatLogFooter } from '../utils/textUtils';
 import {
     Search, Plus, Check, Pin, PinOff, Clock, FolderOpen,
     Loader2, ChevronDown, X, Send, AlertCircle, Copy, RefreshCw
@@ -52,8 +53,8 @@ const PromptCard: React.FC<PromptCardProps> = ({
     return (
         <div
             className={`group bg-white rounded-xl border transition-all duration-300 overflow-hidden ${isExpanded
-                    ? 'border-teal-400 shadow-md ring-1 ring-teal-100'
-                    : 'border-gray-100 hover:border-teal-200 hover:shadow-sm'
+                ? 'border-teal-400 shadow-md ring-1 ring-teal-100'
+                : 'border-gray-100 hover:border-teal-200 hover:shadow-sm'
                 }`}
         >
             <div className="p-3.5">
@@ -89,8 +90,8 @@ const PromptCard: React.FC<PromptCardProps> = ({
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onTogglePin(id); }}
                             className={`p-1.5 rounded-lg transition-all ${isPinned
-                                    ? 'text-amber-500 bg-amber-50 shadow-inner'
-                                    : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'
+                                ? 'text-amber-500 bg-amber-50 shadow-inner'
+                                : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50'
                                 }`}
                         >
                             {isPinned ? <Pin className="h-3.5 w-3.5 fill-current" /> : <PinOff className="h-3.5 w-3.5" />}
@@ -100,8 +101,8 @@ const PromptCard: React.FC<PromptCardProps> = ({
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onCopy(prompt); }}
                             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm active:scale-95 ${isCopied
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-50 text-gray-600 hover:bg-teal-600 hover:text-white'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-gray-50 text-gray-600 hover:bg-teal-600 hover:text-white'
                                 }`}
                         >
                             {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -389,6 +390,9 @@ const Prompt: React.FC = () => {
                 fullContent = tags.join(' ') + '\n\n' + fullContent;
             }
 
+            // Append Log Footer
+            fullContent += formatLogFooter(fullContent);
+
             const res = await client.createCard({
                 title: newTitle.trim(),
                 content: fullContent,
@@ -599,8 +603,8 @@ const Prompt: React.FC = () => {
                             type="button"
                             onClick={() => handleSelectSpace(space._id || space.id || '')}
                             className={`w-full px-3 py-2.5 text-left text-sm rounded-xl transition-all flex items-center justify-between group ${(space._id || space.id) === promptSpaceId
-                                    ? 'text-teal-600 bg-teal-50/50'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                                ? 'text-teal-600 bg-teal-50/50'
+                                : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
                             <span className="font-semibold">{space.title}</span>

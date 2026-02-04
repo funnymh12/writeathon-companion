@@ -35,12 +35,24 @@ function getShortcutString(event) {
     }
 
     // 将按键转换为大写
-    let key = event.key.toUpperCase();
+    let key = event.key;
+
+    // Normalization
     if (key === ' ') key = 'Space';
-    if (key === 'ENTER') key = 'Enter';
+    if (key.toLowerCase() === 'enter') key = 'Enter';
+
+    // Convert single chars to uppercase
+    if (key.length === 1) key = key.toUpperCase();
+    // For specialized keys, keep Title Case or as is (ArrowUp, etc)
 
     parts.push(key);
     return parts.join('+');
+}
+
+// Check match case-insensitively
+function isShortcutMatch(pressed, configured) {
+    if (!pressed || !configured) return false;
+    return pressed.toLowerCase() === configured.toLowerCase();
 }
 
 // 监听键盘事件
@@ -56,7 +68,7 @@ document.addEventListener('keydown', (event) => {
         return;
     }
 
-    if (pressedShortcut === globalShortcut) {
+    if (isShortcutMatch(pressedShortcut, globalShortcut)) {
         // 阻止默认行为（防止网页自身的快捷键冲突）
         event.preventDefault();
         event.stopPropagation();

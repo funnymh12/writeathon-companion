@@ -483,16 +483,14 @@ const Clipper: React.FC = () => {
                 // 1. Process Images
                 const finalContent = await processContentImages(content);
 
-                // Add footer (Timestamp + WordCount)
-                const contentWithFooter = finalContent + formatLogFooter(finalContent);
-
-                // 2. Split (Limit 2000 chars for safety)
-                setMessage('正在保存...');
-                const chunks = smartSplit(contentWithFooter, 2000);
+                const chunks = smartSplit(finalContent, 1800); // Conservative limit to leave room for footer
+                const totalChunks = chunks.length;
 
                 // 3. Create First Card
                 let firstChunk = chunks[0];
-                firstChunk = firstChunk + `\n\n> 来源: [${sourceTitle || title}](${url})`;
+                const footer = formatLogFooter(firstChunk);
+                // First card gets source link + footer
+                firstChunk = firstChunk + `\n\n> 来源: [${sourceTitle || title}](${url})` + footer;
 
                 const res = await client.createCard({
                     title: title,
@@ -502,13 +500,17 @@ const Clipper: React.FC = () => {
 
                 if (!res.success) throw new Error(res.message);
 
-                // 4. Threading
-                if (chunks.length > 1) {
+                // 4. Threading (Extensions)
+                if (totalChunks > 1) {
                     const parentId = res.data?.id || res.data?._id;
                     if (parentId) {
-                        for (let i = 1; i < chunks.length; i++) {
-                            setMessage(`正在追加第 ${i + 1}/${chunks.length} 部分...`);
-                            await client.extendCard(parentId, chunks[i], `${sourceTitle || title} (${i + 1})`);
+                        for (let i = 1; i < totalChunks; i++) {
+                            setMessage(`正在追加第 ${i + 1}/${totalChunks} 部分...`);
+                            let chunkContent = chunks[i];
+                            const chunkFooter = formatLogFooter(chunkContent);
+                            chunkContent += chunkFooter;
+
+                            await client.extendCard(parentId, chunkContent, `${sourceTitle || title} (${i + 1})`);
                         }
                     }
                 }

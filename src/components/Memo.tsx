@@ -33,6 +33,15 @@ const Memo: React.FC = () => {
                 setQuickSendKey(data.shortcuts.quickSend);
             }
         });
+
+        // Listen for storage changes
+        const listener = (changes: any) => {
+            if (changes.shortcuts && changes.shortcuts.newValue?.quickSend) {
+                setQuickSendKey(changes.shortcuts.newValue.quickSend);
+            }
+        };
+        chrome.storage.onChanged.addListener(listener);
+        return () => chrome.storage.onChanged.removeListener(listener);
     }, []);
 
     // Auto-resize Quote
@@ -61,17 +70,17 @@ const Memo: React.FC = () => {
             if (ev.shiftKey) parts.push('Shift');
             if (ev.metaKey) parts.push('Meta');
 
-            let key = ev.key.toUpperCase();
-            if (['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) return null;
+            let key = ev.key;
             if (key === ' ') key = 'Space';
-            if (key === 'Enter') key = 'Enter';
+            if (key.toLowerCase() === 'enter') key = 'Enter';
+            if (key.length === 1) key = key.toUpperCase();
 
             parts.push(key);
             return parts.join('+');
         };
 
         const pressed = getKeyString(e);
-        if (pressed === quickSendKey) {
+        if (pressed && quickSendKey && pressed.toLowerCase() === quickSendKey.toLowerCase()) {
             e.preventDefault();
             handleSend();
         }

@@ -11,6 +11,6 @@ export const formatLogFooter = (content: string): string => {
     // Using string length as a proxy for word count (or character count which is more common in CN context "字数")
     const count = content.length;
 
-    // Format: log：#$(YYYY)$(month_mm)$(day_dd)$(hh)$(mm)，{字数}
-    return `\n\nlog：#${yyyy}${mm}${dd}${hh}${min}，${count}`;
+    // Format: log：$(YYYY)$(month_mm)$(day_dd)$(hh)$(mm)，{字数}
+    return `\n\nlog：${yyyy}${mm}${dd}${hh}${min}，${count}`;
 };
