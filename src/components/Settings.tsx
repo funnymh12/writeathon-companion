@@ -391,6 +391,11 @@ const Settings: React.FC = () => {
                                 onChange={(e) => setGlobalClipShortcut(e.target.value)}
                                 placeholder="例如: Alt+S"
                                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                                onKeyDown={(e) => {
+                                    e.preventDefault();
+                                    const shortcut = getShortcutString(e);
+                                    if (shortcut) setGlobalClipShortcut(shortcut);
+                                }}
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -401,6 +406,11 @@ const Settings: React.FC = () => {
                                 onChange={(e) => setQuickSendShortcut(e.target.value)}
                                 placeholder="例如: Ctrl+Enter"
                                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                                onKeyDown={(e) => {
+                                    e.preventDefault();
+                                    const shortcut = getShortcutString(e);
+                                    if (shortcut) setQuickSendShortcut(shortcut);
+                                }}
                             />
                         </div>
                     </div>
@@ -440,6 +450,30 @@ const Settings: React.FC = () => {
         </div>
     );
 };
+
+// Helper to capture shortcut string
+const getShortcutString = (event: React.KeyboardEvent | KeyboardEvent) => {
+    const parts = [];
+    if (event.ctrlKey) parts.push('Ctrl');
+    if (event.altKey) parts.push('Alt');
+    if (event.shiftKey) parts.push('Shift');
+    if (event.metaKey) parts.push('Meta');
+
+    // Ignore modifier overrides
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) {
+        return null;
+    }
+
+    let key = event.key;
+    if (key === ' ') key = 'Space';
+    if (key.toLowerCase() === 'enter') key = 'Enter';
+
+    // Convert single chars to uppercase
+    if (key.length === 1) key = key.toUpperCase();
+
+    parts.push(key);
+    return parts.join('+');
+}
 
 // Helper for icon
 const ChevronDown = ({ className }: { className?: string }) => (
