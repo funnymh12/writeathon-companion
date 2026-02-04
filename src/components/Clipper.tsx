@@ -293,8 +293,14 @@ const Clipper: React.FC = () => {
     };
 
     const processHtmlToMarkdown = async (html: string, baseUrl: string): Promise<string> => {
+        if (!html) throw new Error("Received empty HTML content from page");
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
+
+        if (!doc || !doc.body) {
+            throw new Error("DOMParser failed to produce a valid document body");
+        }
 
         // 2.1 Use ReadabilityLite for core extraction (Static Import)
         const reader = new ReadabilityLite(doc);
@@ -322,7 +328,7 @@ const Clipper: React.FC = () => {
         });
 
         // Convert the extracted content (or body if extraction failed to meet threshold)
-        const contentHtml = article ? article.content : doc.body.innerHTML;
+        const contentHtml = article ? article.content : (doc.body ? doc.body.innerHTML : '');
         let markdown = turndownService.turndown(contentHtml);
 
         // 2.3 Powerful Post-Processing (Regex)
