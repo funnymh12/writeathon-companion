@@ -14,6 +14,9 @@ interface ScrapedImage {
     height: number;
 }
 
+import { ReadabilityLite } from '../utils/readability-lite';
+import TurndownService from 'turndown'; // Static import
+
 const Clipper: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [message, setMessage] = useState('');
@@ -48,9 +51,6 @@ const Clipper: React.FC = () => {
         // Default to loading page content
         scrapePageContent();
     }, []);
-
-    // Effect for mode change handling moved to bottom or we call specific functions directly in callbacks?
-    // Let's redefine handleRefresh after scrape functions and use another useEffect there.
 
     const fetchSpaces = async () => {
         try {
@@ -213,16 +213,6 @@ const Clipper: React.FC = () => {
             else if (main) root = main as HTMLElement;
             else if (contentDiv) root = contentDiv as HTMLElement;
 
-            // Use local cleaner
-            // Note: We need to bind the URL for relative path resolution in localCleanNode, 
-            // but `localCleanNode` closes over the state `url`. 
-            // Better to ensure `url` state is updated before calling or pass it.
-            // Since `setUrl` is async, we rely on the fact that `url` input matches `targetUrl` usually,
-            // but let's be safe and assume `targetUrl` is the base.
-
-            // Re-implementing specific relative resolution inside localCleanNode relies on `url` state.
-            // Let's rely on `url` being set, or update it now.
-
             const markdown = localCleanNode(root).replace(/\n{3,}/g, '\n\n').trim();
             setContent(markdown);
 
@@ -295,10 +285,10 @@ const Clipper: React.FC = () => {
             }
             setStatus('idle');
             setMessage('');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Scrape failed', err);
             setStatus('error');
-            setMessage('解析当前页面失败');
+            setMessage(`解析失败: ${err.message || '未知错误'}`);
         }
     };
 
@@ -306,14 +296,11 @@ const Clipper: React.FC = () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // 2.1 Use ReadabilityLite for core extraction
-        // We dynamically import enabled local util
-        const { ReadabilityLite } = await import('../utils/readability-lite');
+        // 2.1 Use ReadabilityLite for core extraction (Static Import)
         const reader = new ReadabilityLite(doc);
         const article = reader.parse();
 
-        // 2.2 Turndown
-        const TurndownService = (await import('turndown')).default;
+        // 2.2 Turndown (Static Import)
         const turndownService = new TurndownService({
             headingStyle: 'atx',
             codeBlockStyle: 'fenced',
