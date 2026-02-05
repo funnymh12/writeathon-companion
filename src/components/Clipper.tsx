@@ -3,7 +3,9 @@ import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { uploadImage } from '../utils/imageUtils';
 import { formatLogFooter } from '../utils/textUtils';
-import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, ChevronDown, CheckCircle2, Cloud, ExternalLink, X, RotateCw, Globe } from 'lucide-react';
+import { saveMarkdown, saveImagesAsZip } from '../utils/fileUtils';
+import SpaceSelector from './SpaceSelector';
+import { Loader2, Check, Scissors, Link as LinkIcon, Image as ImageIcon, FileText, CheckCircle2, Cloud, ExternalLink, X, RotateCw, Globe, Download } from 'lucide-react';
 
 type ClipMode = 'article' | 'image';
 
@@ -450,6 +452,88 @@ const Clipper: React.FC = () => {
         return chunks;
     };
 
+    const handleLocalSave = async () => {
+        if (mode === 'article') {
+            if (!content) return;
+            try {
+                const frontmatter = {
+                    title: title || 'Untitled',
+                    url: url,
+                    date: new Date().toISOString(),
+                    saved_at: new Date().toLocaleString()
+                };
+                const filename = title || 'clipping';
+                await saveMarkdown(content, filename, frontmatter);
+            } catch (e) {
+                console.error('Local save failed', e);
+                setMessage('保存到本地失败');
+                setStatus('error');
+            }
+        } else if (mode === 'image') {
+            if (selectedImages.size === 0) {
+                setMessage('请至少选择一张图片');
+                return;
+            }
+
+            try {
+                setStatus('loading');
+                setMessage('正在转换并打包...');
+
+                // Map selected URLs back to image objects to get ALT text
+                const imagesToSave = Array.from(selectedImages).map((src, index) => {
+                    const originalImg = images.find(img => img.src === src);
+                    let alt = originalImg?.alt?.trim();
+
+                    // Sanitize Alt text to be filename safe
+                    if (alt) {
+                        alt = alt.replace(/[<>:"/\\|?*]/g, '_');
+                    }
+
+                    // Naming Strategy:
+                    // 1. If Alt exists and is reasonable length, use it.
+                    // 2. Fallback to [ArticleTitle]_[Index]
+                    // CRITICAL: Always append index to ensure uniqueness (avoids overwrite bug)
+                    let filename = '';
+                    if (alt && alt.length > 1 && alt.length < 50) {
+                        filename = `${alt}_${index + 1}`;
+                    } else {
+                        const safeTitle = (title || 'image').substring(0, 30).replace(/[<>:"/\\|?*]/g, '_');
+                        filename = `${safeTitle}_${index + 1}`;
+                    }
+
+                    return { src, filename };
+                });
+
+                // Zip Naming: Title(10 chars) + Date(YYYYMMDD_HHMMSS)
+                const now = new Date();
+                const dateStr = now.getFullYear().toString() +
+                    (now.getMonth() + 1).toString().padStart(2, '0') +
+                    now.getDate().toString().padStart(2, '0') + '_' +
+                    now.getHours().toString().padStart(2, '0') +
+                    now.getMinutes().toString().padStart(2, '0') +
+                    now.getSeconds().toString().padStart(2, '0');
+
+                const safeTitle = (title || 'images').substring(0, 10).replace(/[<>:"/\\|?*]/g, '_').trim();
+                const zipName = `${safeTitle}_${dateStr}`;
+
+                await saveImagesAsZip(imagesToSave, zipName, (percent) => {
+                    setMessage(`正在处理 ${percent}%...`);
+                });
+
+                setStatus('success');
+                setMessage('打包完成');
+                setTimeout(() => {
+                    setStatus('idle');
+                    setMessage('');
+                }, 3000);
+            } catch (e) {
+                console.error('Zip save failed', e);
+                setStatus('error');
+                setMessage('打包下载失败');
+            }
+        }
+    };
+
     const handleSave = async () => {
         setStatus('loading');
         setMessage('');
@@ -562,46 +646,40 @@ const Clipper: React.FC = () => {
         <div className="flex flex-col h-full bg-transparent relative">
             {/* Top Bar: Space & Mode */}
             <div className="px-4 py-3 flex items-center justify-between glass z-10">
-                {/* Mode Switcher - Pill Style */}
-                <div className="flex p-0.5 bg-muted/80 rounded-lg">
+                {/* Mode Switcher - Sliding Pill */}
+                <div className="relative flex items-center bg-muted/60 p-1 rounded-xl w-[200px]">
+                    {/* Sliding Background */}
+                    <div
+                        className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-background shadow-sm rounded-lg transition-all duration-300 ease-spring ${mode === 'image' ? 'translate-x-[100%] left-0' : 'translate-x-0 left-1'
+                            }`}
+                    />
+
                     <button
                         onClick={() => setMode('article')}
-                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'article'
-                            ? 'bg-card text-primary shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground'
+                        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold transition-colors duration-300 ${mode === 'article' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
-                        <FileText className="h-3 w-3" />
+                        <FileText className="h-3.5 w-3.5" />
                         全文剪藏
                     </button>
                     <button
                         onClick={() => setMode('image')}
-                        className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1.5 ${mode === 'image'
-                            ? 'bg-card text-primary shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground'
+                        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold transition-colors duration-300 ${mode === 'image' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
-                        <ImageIcon className="h-3 w-3" />
+                        <ImageIcon className="h-3.5 w-3.5" />
                         图片提取
                     </button>
                 </div>
 
-                {/* Right Side: Refresh & Space */}
+                {/* Right Side: Space Selector */}
                 <div className="flex items-center gap-1">
-                    <div className="relative flex items-center">
-                        <select
-                            value={selectedSpace}
-                            onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="appearance-none bg-primary/10 hover:bg-primary/20 border border-primary/10 rounded-xl px-3 py-1.5 text-[11px] font-bold text-primary cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 max-w-[120px] truncate"
-                        >
-                            {spaces.map((space) => (
-                                <option key={space._id || space.id} value={space._id || space.id} className="bg-background text-foreground">
-                                    {space.title}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-2.5 h-3.5 w-3.5 text-primary pointer-events-none" />
-                    </div>
+                    <SpaceSelector
+                        spaces={spaces}
+                        selectedSpaceId={selectedSpace}
+                        onChange={handleSpaceChange}
+                        className="min-w-[120px]"
+                    />
                 </div>
             </div>
 
@@ -637,23 +715,13 @@ const Clipper: React.FC = () => {
                                     <RotateCw className={`h-3.5 w-3.5 ${status === 'loading' ? 'animate-spin' : ''}`} />
                                 </button>
                             </div>
-                        </div>
 
-                        <div className="relative group">
                             <textarea
                                 value={content}
                                 onChange={(e) => setContent(e.target.value)}
-                                className="w-full h-[360px] text-sm leading-7 text-muted-foreground bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-4 focus:ring-1 focus:ring-primary/20 focus:border-primary/30 resize-none font-serif shadow-sm scrollbar-thin outline-none"
+                                className="w-full h-[360px] text-sm leading-7 text-muted-foreground bg-card border border-border/50 rounded-xl p-4 focus:ring-1 focus:ring-primary/20 focus:border-primary/30 resize-none font-serif shadow-sm scrollbar-thin outline-none"
                                 placeholder="内容将显示在这里..."
                             />
-                            <div className="absolute bottom-4 right-4 flex items-center gap-3">
-                                <span className="text-[10px] text-primary bg-primary/10 px-2 py-1 rounded-full border border-primary/20 font-bold">
-                                    预计 {estimatedCards} 张卡片
-                                </span>
-                                <span className="text-[10px] text-muted-foreground bg-card/80 backdrop-blur px-2 py-1 rounded-full border border-border/60">
-                                    {content.length} 字
-                                </span>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -671,36 +739,47 @@ const Clipper: React.FC = () => {
                                 <button onClick={scrapeImages} className="mt-2 text-xs text-primary hover:underline">刷新重试</button>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 gap-1 pb-20">
-                                {images.map((img, idx) => (
-                                    <div
-                                        key={idx}
-                                        onClick={() => toggleImageSelection(img.src)}
-                                        className={`relative group aspect-square cursor-pointer overflow-hidden rounded-lg transition-all border-2 ${selectedImages.has(img.src)
-                                            ? 'border-primary filter-none'
-                                            : 'border-transparent hover:border-primary/30'
-                                            }`}
-                                    >
-                                        <img
-                                            src={img.src}
-                                            alt={img.alt}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                            loading="lazy"
-                                        />
-                                        <div className={`absolute top-2 right-2 rounded-full p-1 transition-all ${selectedImages.has(img.src) ? 'bg-primary text-primary-foreground shadow-md' : 'bg-black/20 text-white/50 group-hover:bg-black/40'}`}>
-                                            <Check className="h-3 w-3" />
-                                        </div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setViewFullImage(img.src); }}
-                                            className="absolute bottom-2 right-2 p-1.5 bg-black/50 backdrop-blur rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            <div className="grid grid-cols-2 gap-2 pb-20 px-2">
+                                {images.map((img, idx) => {
+                                    const isSelected = selectedImages.has(img.src);
+                                    return (
+                                        <div
+                                            key={idx}
+                                            onClick={() => toggleImageSelection(img.src)}
+                                            className={`relative group aspect-square cursor-pointer overflow-hidden rounded-xl transition-all duration-300 ease-out border-2 ${isSelected
+                                                ? 'border-primary scale-95 shadow-md shadow-primary/10'
+                                                : 'border-transparent hover:border-primary/30 hover:scale-[0.98]'
+                                                }`}
                                         >
-                                            <ExternalLink className="h-3 w-3" />
-                                        </button>
-                                        <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/40 backdrop-blur rounded text-[9px] text-white font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {img.width}x{img.height}
+                                            <div className={`absolute inset-0 z-10 transition-colors duration-300 ${isSelected ? 'bg-primary/10' : 'group-hover:bg-black/5'}`} />
+                                            <img
+                                                src={img.src}
+                                                alt={img.alt}
+                                                className={`w-full h-full object-cover transition-transform duration-700 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}
+                                                loading="lazy"
+                                            />
+
+                                            {/* Check Overlay */}
+                                            <div className={`absolute top-2 right-2 z-20 rounded-full p-1.5 transition-all duration-300 ${isSelected
+                                                ? 'bg-primary text-primary-foreground shadow-lg scale-100 rotate-0'
+                                                : 'bg-black/20 text-white/50 group-hover:bg-black/40 scale-90 opacity-0 group-hover:opacity-100'
+                                                }`}>
+                                                <Check className="h-3 w-3" strokeWidth={3} />
+                                            </div>
+
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setViewFullImage(img.src); }}
+                                                className="absolute bottom-2 right-2 z-20 p-1.5 bg-black/50 backdrop-blur-md rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                            </button>
+
+                                            <div className="absolute bottom-2 left-2 z-20 px-1.5 py-0.5 bg-black/40 backdrop-blur rounded text-[9px] text-white font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {img.width}x{img.height}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -721,9 +800,30 @@ const Clipper: React.FC = () => {
                     ) : mode === 'image' ? (
                         <span>已选 {selectedImages.size} 张图片</span>
                     ) : (
-                        <span>保存到 Writeathon</span>
+                        mode === 'article' ? (
+                            <div className="flex items-center gap-3">
+                                <span className="text-muted-foreground bg-muted/50 px-2 py-0.5 rounded shadow-sm">
+                                    {content.length} 字
+                                </span>
+                                <span className="text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 font-bold">
+                                    预计 {estimatedCards} 张卡
+                                </span>
+                            </div>
+                        ) : (
+                            <span>保存到 Writeathon</span>
+                        )
                     )}
                 </div>
+
+                <button
+                    onClick={handleLocalSave}
+                    disabled={mode === 'article' ? !content : selectedImages.size === 0}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-full font-medium text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                    title={mode === 'article' ? "保存为 Markdown" : "打包下载选中的图片"}
+                >
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">本地保存</span>
+                </button>
 
                 <button
                     onClick={handleSave}
@@ -750,22 +850,24 @@ const Clipper: React.FC = () => {
             </div>
 
             {/* Full Image Modal */}
-            {viewFullImage && (
-                <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <button
-                        onClick={() => setViewFullImage(null)}
-                        className="absolute top-4 right-4 p-2 text-white/50 hover:text-white transition-colors"
-                    >
-                        <X className="h-6 w-6" />
-                    </button>
-                    <img
-                        src={viewFullImage}
-                        className="max-w-full max-h-full rounded shadow-2xl"
-                        alt="Preview"
-                    />
-                </div>
-            )}
-        </div>
+            {
+                viewFullImage && (
+                    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <button
+                            onClick={() => setViewFullImage(null)}
+                            className="absolute top-4 right-4 p-2 text-white/50 hover:text-white transition-colors"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
+                        <img
+                            src={viewFullImage}
+                            className="max-w-full max-h-full rounded shadow-2xl"
+                            alt="Preview"
+                        />
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

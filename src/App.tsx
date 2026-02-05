@@ -6,6 +6,7 @@ import Recent from './components/Recent';
 import Clipper from './components/Clipper';
 import Prompt from './components/Prompt';
 import AIChat from './components/AIChat';
+import Onboarding from './components/Onboarding';
 import { Settings as SettingsIcon, Notebook, History, Scissors, Sparkles, MessageSquare, ChevronLeft, PenTool } from 'lucide-react';
 
 type Tab = 'memo' | 'recent' | 'clip' | 'prompt' | 'chat' | 'settings';
@@ -54,7 +55,7 @@ function App() {
             }
         } else {
             setIsAuth(false);
-            setActiveTab('settings');
+            // Don't force tab to settings here, we handle !isAuth render below
         }
     };
 
@@ -75,12 +76,16 @@ function App() {
 
     if (isAuth === null) {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-50/50">
+            <div className="flex h-screen items-center justify-center bg-background">
                 <div className="relative">
-                    <div className="h-8 w-8 rounded-full border-2 border-teal-500/20 border-t-teal-500 animate-spin" />
+                    <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
                 </div>
             </div>
         );
+    }
+
+    if (!isAuth) {
+        return <Onboarding onComplete={() => checkAuth()} />;
     }
 
     return (
@@ -200,32 +205,39 @@ function NavButton({ active, onClick, icon, label, visible }: { active: boolean;
             onClick={onClick}
             className={`
                 relative flex flex-col items-center justify-center gap-1.5 w-full h-full 
-                transition-all duration-300 group
-                ${active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}
+                transition-all duration-300 ease-out group active:scale-90
             `}
         >
             <div className={`
-                relative z-10 p-1 rounded-xl transition-all duration-500 ease-out
-                ${active ? 'bg-primary/10 -translate-y-1' : 'group-hover:bg-muted/50 group-hover:-translate-y-0.5'}
+                relative z-10 p-1.5 rounded-2xl transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+                ${active
+                    ? 'bg-primary/10 -translate-y-1 shadow-[0_0_20px_rgba(20,184,166,0.15)] ring-1 ring-primary/20'
+                    : 'group-hover:bg-muted/60 group-hover:-translate-y-0.5'
+                }
             `}>
-                {icon}
+                <div className={`transition-colors duration-300 ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                    {icon}
+                </div>
             </div>
 
             <span className={`
-                text-[10px] font-medium tracking-wide transition-all duration-300
-                ${active ? 'opacity-100 translate-y-0 font-semibold' : 'opacity-0 translate-y-2 group-hover:opacity-70 group-hover:translate-y-0'}
+                text-[10px] font-medium tracking-wide transition-all duration-300 absolute bottom-3
+                ${active
+                    ? 'opacity-100 translate-y-0 font-bold bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent'
+                    : 'opacity-0 translate-y-2 group-hover:opacity-70 group-hover:translate-y-0 text-muted-foreground'
+                }
             `}>
                 {label}
             </span>
 
-            {/* Active Glow Indicator */}
+            {/* Active Glow Indicator (Behind) */}
             {active && (
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary/20 blur-xl rounded-full" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-primary/10 blur-xl rounded-full" />
             )}
 
             {/* Bottom active pill */}
             {active && (
-                <div className="absolute bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_8px_hsl(var(--primary)/0.5)] animate-in fade-in zoom-in duration-300" />
+                <div className="absolute bottom-1 w-1 h-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full shadow-[0_0_8px_hsl(var(--primary)/0.6)] animate-in fade-in zoom-in duration-300" />
             )}
         </button>
     );

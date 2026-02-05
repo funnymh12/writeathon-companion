@@ -1,7 +1,7 @@
 {
     "name": "writeathon-companion",
     "private": true,
-    "version": "1.0.5",
+    "version": "1.0.17",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -9,16 +9,20 @@
         "package": "node scripts/package.cjs",
         "test": "vitest",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "release": "node scripts/release.cjs"
     },
     "dependencies": {
         "@types/crypto-js": "^4.2.2",
+        "@types/jszip": "^3.4.0",
         "clsx": "^2.1.0",
         "crypto-js": "^4.2.0",
+        "jszip": "^3.10.1",
         "lucide-react": "^0.312.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-markdown": "^10.1.0",
+        "semver": "^7.7.3",
         "tailwind-merge": "^2.2.1",
         "tailwindcss-animate": "^1.0.7",
         "turndown": "^7.2.2"

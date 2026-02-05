@@ -81,35 +81,114 @@ const parseWeChat = (doc: Document): string | null => {
         clone.querySelectorAll(sel).forEach(el => el.remove());
     });
 
+    // 3.1 Style Normalization Structure Enhancement (CRITICAL STEP)
+    // Convert inline styles to semantic tags BEFORE structural transformation
+    const allElements = clone.querySelectorAll('*');
+    allElements.forEach(el => {
+        const style = window.getComputedStyle(el); // Note: getComputedStyle might not work on detached clone in some envs, but inline style parsing works
+        const inlineStyle = el.getAttribute('style') || '';
+
+        // Handle Bold
+        if (inlineStyle.includes('font-weight: bold') || inlineStyle.includes('font-weight: 700') ||
+            inlineStyle.includes('font-weight: 600') || inlineStyle.includes('font-weight:800') ||
+            inlineStyle.includes('font-weight:900')) {
+            const strong = doc.createElement('strong');
+            strong.innerHTML = el.innerHTML;
+            el.replaceWith(strong);
+        }
+    });
+
     // 4. TRANSFORM: Convert section/div to P for Turndown
-    // WeChat uses section/div for everything. Turndown treats them as blocks only if they look like blocks.
-    // Converting them to P is the most reliable "brute force" fix for clumping.
-    // We process bottom-up to handle nesting correctly.
     const blocks = Array.from(clone.querySelectorAll('section, div'));
     blocks.reverse().forEach(block => {
         if (block.parentNode) {
-            const p = doc.createElement('p');
-            p.innerHTML = block.innerHTML;
-            block.parentNode.replaceChild(p, block);
+            // Heuristic: If this block is short, bold, and seemingly a header, make it H3
+            const text = block.textContent?.trim() || '';
+            const isBold = block.querySelector('strong, b') || block.getAttribute('style')?.includes('font-weight: bold');
+
+            if (isBold && text.length > 0 && text.length < 50 && !text.includes('\n')) {
+                const h3 = doc.createElement('h3');
+                h3.innerHTML = block.innerHTML;
+                block.parentNode.replaceChild(h3, block);
+            } else {
+                const p = doc.createElement('p');
+                p.innerHTML = block.innerHTML;
+                block.parentNode.replaceChild(p, block);
+            }
         }
     });
 
     // 5. Extract Text via Turndown
     const turndownService = createTurndownService();
+    // Keep H3s we just made
+    turndownService.keep(['h3', 'h4', 'strong', 'b']);
+
     let md = turndownService.turndown(clone.innerHTML);
 
     // 6. Prepend Title & Author (WeChat specific)
-    const title = doc.querySelector('#activity-name')?.textContent?.trim();
-    const author = doc.querySelector('#js_name')?.textContent?.trim();
+    const title = doc.querySelector('#activity-name')?.textContent?.trim() ||
+        doc.querySelector('.rich_media_title')?.textContent?.trim();
+    const author = doc.querySelector('#js_name')?.textContent?.trim() ||
+        doc.querySelector('.rich_media_meta_text')?.textContent?.trim();
 
     if (title) {
         let meta = `# ${title}\n\n`;
-        if (author) meta += `**${author}**\n\n`;
+        if (author) meta += `**Author: ${author}**\n\n---\n\n`;
         md = meta + md;
     }
 
-    // 6. Post-process to ensure image separation (Defensive)
-    md = md.replace(/(!\[.*?\]\(.*?\))([^\n])/g, '$1\n\n$2');
+    // 7. Post-process to clean up excessive newlines sometimes caused by structural replacement
+    md = md.replace(/\n{3,}/g, '\n\n');
+
+    return enhanceMarkdownSyntax(md);
+};
+
+// ----------------------------------------------------------------------------
+// Strategy: Syntax Enhancer (Post-Processing)
+// ----------------------------------------------------------------------------
+const enhanceMarkdownSyntax = (text: string): string => {
+    let md = text;
+
+    // 1. Unordered List Repair
+    // Converts "• Text", "● Text" to "- Text"
+    md = md.replace(/^(\s*)[•●]\s+/gm, '$1- ');
+
+    // 2. Ordered List Repair
+    // Converts "1、Text", "1.Text" (no space), "1．Text" (fullwidth dot) to "1. Text"
+    md = md.replace(/^(\s*)(\d+)[、．.]\s*/gm, '$1$2. ');
+    // Handle (1) Text -> 1. Text pattern (Optional, usually desirable for consistency)
+    // md = md.replace(/^(\s*)\((\d+)\)\s*/gm, '$1$2. ');
+
+    // 3. Bold Formatting Cleanup
+    // 3.1 Remove spaces inside bold: "** Text **" -> "**Text**"
+    md = md.replace(/\*\*\s+([^*]*?)\s+\*\*/g, '**$1**');
+
+    // 3.2 Move common punctuation OUTSIDE of bold (Chinese typography optimization)
+    // "**Text，**" -> "**Text**，"
+    // "**Text。**" -> "**Text**。"
+    const punctuation = '，。；：！？、,.!:;?';
+    // Use a regex that captures the content and the trailing punctuation
+    // Note: We perform this iteratively or via refined regex.
+    // Simplifying to common cases:
+    md = md.replace(new RegExp(`\\*\\*([^\\*]+)([${punctuation}])\\*\\*`, 'g'), '**$1**$2');
+
+    // 4. Spacing (Pangu-like) - Optional but nice
+    // Add space between Text and **Bold**
+    // Text**Bold** -> Text **Bold**
+    // **Bold**Text -> **Bold** Text
+    // md = md.replace(/([\u4e00-\u9fa5a-zA-Z0-9])\*\*/g, '$1 **');
+    // md = md.replace(/\*\*([\u4e00-\u9fa5a-zA-Z0-9])/g, '** $1');
+
+    // 5. Cleanup Empty/Useless Elements
+    // Empty links: []() or [ ]()
+    md = md.replace(/\[\s*\]\(.*?\)/g, '');
+    // Empty bold/italic
+    md = md.replace(/\*\*\s*\*\*/g, '');
+
+    // 6. Ensure Image Separation (Defensive)
+    // Ensures images have newlines around them so they render as blocks
+    md = md.replace(/([^\n])(\!\[.*?\]\(.*?\))/g, '$1\n\n$2');
+    md = md.replace(/(\!\[.*?\]\(.*?\))([^\n])/g, '$1\n\n$2');
 
     return md;
 };
@@ -223,72 +302,63 @@ const parseLLMConversation = (doc: Document, url: string): string | null => {
     }
 
     // C. Gemini (gemini.google.com)
-    // C. Gemini (gemini.google.com) - Optimized for Standard & Custom Gems
+    // Optimized for latest Gemini Web Interface (Feb 2026)
     else if (url.includes('gemini.google.com') || url.includes('bard.google.com')) {
-        // Focus on MAIN content to avoid Sidebar/History garbage
-        const main = doc.querySelector('main');
-        const root = main || doc;
+        const root = doc.querySelector('main') || doc.body;
 
-        // Selectors for message blocks
-        // User: .user-query-container, .query-text
-        // AI: .model-response-container, message-content, .message-content, [data-test-id="model-response-text"]
+        // Gemini Structure Analysis:
+        // User Query: .user-query-container, .query-text, .ms-user-query
+        // Model Response: .model-response-container, message-content, .ms-model-response
+        // We look for high-level "turn" containers if possible, or leaf nodes in order.
 
-        // We select specific reliable nodes (Leaf-ish nodes). 
+        // Strategy: Select all potential message blocks and sort by position
         const blocks = root.querySelectorAll(`
-            .user-query-container, 
+            .user-query-container,
             .model-response-container,
-            message-content, 
+            message-content,
             [data-test-id="model-response-text"],
-            .user-query,
             .query-text
-         `);
+        `);
 
-        // Sort by DOM order ensuring chronological conversation
-        const nodes = Array.from(blocks).sort((a, b) => {
-            return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
-        });
+        // Filter and Deduplicate
+        // We only want the "meat". If we select a container, we check if we also selected its children.
+        // If we have children, we prefer children (as they are more specific).
+        // BUT for Gemini, <message-content> is the best AI container. .user-query-container is the best User container.
 
-        const uniqueBlocks: Element[] = [];
+        const conversationNodes: { role: string, node: Element }[] = [];
 
-        // Filter Logic:
-        // We want to capture the User Query and the AI Response.
-        // User Query is often in .user-query or .query-text
-        // AI Response is in message-content
+        blocks.forEach(block => {
+            // Determine Role
+            const isUser = block.classList.contains('user-query-container') ||
+                block.classList.contains('query-text') ||
+                block.querySelector('.user-query-container');
 
-        nodes.forEach(current => {
-            // If this node contains another node in our list, SKIP this node (use the child instead)
-            // Exception: specific containers that might have multiple parts? 
-            // Actually, for Gemini, relying on 'message-content' is safest for AI.
-            // Relying on '.query-text' or '.user-query-container' is safest for User.
+            const isAI = block.tagName.toLowerCase() === 'message-content' ||
+                block.classList.contains('model-response-container') ||
+                block.getAttribute('data-test-id') === 'model-response-text';
 
-            // Simple logic:
-            // If it's a known leaf-type (.user-query, .query-text, message-content, data-test-id), take it.
-            // If it's a container (.model-response-container, .user-query-container), only take it if it doesn't contain the known leaf-types.
-
-            const isLeafType = current.matches('message-content, [data-test-id="model-response-text"], .query-text, .user-query');
-            if (isLeafType) {
-                uniqueBlocks.push(current);
-            } else {
-                // It's a container. Does it have a leaf-type child?
-                const hasChild = current.querySelector('message-content, [data-test-id="model-response-text"], .query-text, .user-query');
-                if (!hasChild) {
-                    uniqueBlocks.push(current);
-                }
+            if (isUser) {
+                // If it's a container, try to find the text part, otherwise take the whole
+                const textPart = block.querySelector('.query-text') || block;
+                conversationNodes.push({ role: 'User', node: textPart });
+            } else if (isAI) {
+                // For AI, message-content is usually pure.
+                conversationNodes.push({ role: 'AI', node: block });
             }
         });
 
-        uniqueBlocks.forEach(el => {
-            const html = el.outerHTML.toLowerCase();
-            // Refined Role Detection
-            const isUser = el.classList.contains('user-query-container') ||
-                el.classList.contains('query-text') ||
-                el.classList.contains('user-query') ||
-                html.includes('user-query') ||
-                el.closest('.user-query-container'); // Check parent too
+        // Sort by document position
+        conversationNodes.sort((a, b) => (a.node.compareDocumentPosition(b.node) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
 
-            const text = extract(el);
+        // Extract Text
+        conversationNodes.forEach(item => {
+            // Clean specific Gemini UI garbage
+            const clone = item.node.cloneNode(true) as HTMLElement;
+            clone.querySelectorAll('.edit-button, .response-feedback, .more-options, .citation, .sources-list').forEach(el => el.remove());
+
+            const text = extract(clone);
             if (text.trim().length > 0) {
-                conversation.push({ role: isUser ? 'User' : 'AI', text });
+                conversation.push({ role: item.role, text });
             }
         });
     }
@@ -298,21 +368,19 @@ const parseLLMConversation = (doc: Document, url: string): string | null => {
         // Look for common Chat UI patterns
         const genericBubbles = doc.querySelectorAll('[class*="message" i], [class*="bubble" i], [class*="chat-item" i]');
         genericBubbles.forEach(el => {
-            // Avoid capturing the entire list if the class is on the list
-            if (el.children.length > 10) return;
-
+            if (el.children.length > 10) return; // Skip likely containers
             const className = el.className.toLowerCase();
             const text = extract(el);
-            if (text.trim().length > 10) {
+            if (text.trim().length > 5) {
                 const isUser = className.includes('user') || className.includes('self') || className.includes('human');
                 conversation.push({ role: isUser ? 'User' : 'AI', text });
             }
         });
     }
 
-    // If we found a conversation structure
+    // Format Output
     if (conversation.length > 0) {
-        // Filter out duplicates (often happens with querySelectorAll capturing both parent and child)
+        // Deduplicate adjacent
         const unique: { role: string, text: string }[] = [];
         let lastText = '';
         conversation.forEach(item => {
@@ -321,7 +389,17 @@ const parseLLMConversation = (doc: Document, url: string): string | null => {
                 lastText = item.text;
             }
         });
-        return unique.map(item => `**${item.role}**:\n${item.text}\n`).join('\n---\n\n');
+
+        // Add Metadata Header
+        const dateStr = new Date().toLocaleString('zh-CN', { hour12: false });
+        let result = `> 📅 **Clipping Date**: ${dateStr}\n> 🔗 **Source**: [${url}](${url})\n\n---\n\n`;
+
+        result += unique.map(item => {
+            const roleHeader = item.role === 'User' ? '#### 🙋 User' : '#### 🤖 AI';
+            return `${roleHeader}\n\n${item.text}`;
+        }).join('\n\n---\n\n');
+
+        return result;
     }
 
     return null;
@@ -423,7 +501,7 @@ const parseDeepSeek = (doc: Document): string | null => {
                 last = item.text;
             }
         });
-        return unique.map(item => `**${item.role}**:\n${item.text}\n`).join('\n---\n\n');
+        return enhanceMarkdownSyntax(unique.map(item => `**${item.role}**:\n${item.text}\n`).join('\n---\n\n'));
     }
 
     return null;
@@ -444,39 +522,45 @@ export const parseContent = async (html: string, url: string): Promise<string> =
     }
 
     const lowerUrl = url.toLowerCase();
+    let resultMarkdown = '';
 
     // 1. Strategy: WeChat (High Priority)
     if (lowerUrl.includes('mp.weixin.qq.com')) {
         const wechatMd = parseWeChat(doc);
-        if (wechatMd && wechatMd.length > 50) { // Minimal validity check
-            return wechatMd;
+        if (wechatMd && wechatMd.length > 50) {
+            resultMarkdown = wechatMd;
         }
     }
 
     // 2. Strategy: LLM Conversation
-    if (lowerUrl.includes('chatgpt') || lowerUrl.includes('openai') ||
+    else if (lowerUrl.includes('chatgpt') || lowerUrl.includes('openai') ||
         lowerUrl.includes('gemini') || lowerUrl.includes('bard') ||
         lowerUrl.includes('doubao')) {
         const llmMd = parseLLMConversation(doc, lowerUrl);
-        if (llmMd) return llmMd;
+        if (llmMd) resultMarkdown = llmMd;
     }
 
     // 2.1 Strategy: DeepSeek
-    if (lowerUrl.includes('deepseek')) {
+    else if (lowerUrl.includes('deepseek')) {
         const dsMd = parseDeepSeek(doc);
-        if (dsMd) return dsMd;
-        // Fallback to parseLLMConversation if specific strategy fails but URL matches
-        const fallback = parseLLMConversation(doc, lowerUrl);
-        if (fallback) return fallback;
+        if (dsMd) {
+            resultMarkdown = dsMd;
+        } else {
+            // Fallback
+            const fallback = parseLLMConversation(doc, lowerUrl);
+            if (fallback) resultMarkdown = fallback;
+        }
     }
 
-    // 3. Fallback: General Readability
-    const reader = new ReadabilityLite(doc);
-    const article = reader.parse();
+    // 3. Fallback: General Readability - Only if no specific strategy worked
+    if (!resultMarkdown) {
+        const reader = new ReadabilityLite(doc);
+        const article = reader.parse();
+        const turndownService = createTurndownService();
+        const sourceHtml = article ? article.content : doc.body.innerHTML;
+        resultMarkdown = turndownService.turndown(sourceHtml);
+    }
 
-    // 4. General Turndown
-    const turndownService = createTurndownService();
-    const sourceHtml = article ? article.content : doc.body.innerHTML;
-
-    return turndownService.turndown(sourceHtml);
+    // Final Polish: Apply global syntax enhancements
+    return enhanceMarkdownSyntax(resultMarkdown);
 };

@@ -2,6 +2,48 @@
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error(error));
 
+// ============= 全局快捷键处理 =============
+chrome.commands.onCommand.addListener(async (command) => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (!tab) return;
+
+    console.log('[Writeathon] Command triggered:', command);
+
+    if (command === 'clip-selection') {
+        try {
+            // 尝试向 Content Script 发送消息获取选区
+            const response = await chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_CLIP_FROM_BG' });
+
+            if (response && response.success) {
+                const { title, url, selection } = response.payload;
+                handleQuickClip(tab.id, title, url, selection);
+            } else if (response?.reason === 'no_selection') {
+                showNotification(tab.id, '提示', '请先选中要剪藏的文字', true);
+            }
+        } catch (e) {
+            console.log('Content script unreachable, trying fallback:', e);
+            // Fallback: 使用 executeScript 获取纯文本 (适用于 Content Script 未加载的情况)
+            try {
+                const results = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => window.getSelection()?.toString() || ''
+                });
+
+                const text = results[0]?.result;
+                if (text && text.trim().length > 0) {
+                    handleQuickClip(tab.id, tab.title || '未命名', tab.url || '', text);
+                } else {
+                    showNotification(tab.id, '提示', '无法获取选区，请尝试刷新页面', true);
+                }
+            } catch (innerE) {
+                console.error('Fallback failed:', innerE);
+                showNotification(tab.id, '无法剪藏', '此页面不支持快捷键剪藏', true);
+            }
+        }
+    }
+});
+
 // ============= 右键菜单功能 =============
 
 // 创建右键菜单
@@ -185,6 +227,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // 处理来自 Content Script 的消息 (全局快捷键)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'CLIP_SELECTION') {
+        const { title, url, selection } = message.payload;
+        // Need to get the tabId from sender
+        const tabId = sender.tab?.id;
         handleQuickClip(tabId, title, url, selection);
     }
 

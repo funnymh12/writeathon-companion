@@ -3,7 +3,8 @@ import { WriteathonClient, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { handlePasteImage } from '../utils/imageUtils';
 import { formatLogFooter } from '../utils/textUtils';
-import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles, Image as ImageIcon } from 'lucide-react';
+import SpaceSelector from './SpaceSelector';
+import { Send, Loader2, Check, Quote, X, Clipboard, ChevronDown, Sparkles, Image as ImageIcon, Maximize2, Minimize2 } from 'lucide-react';
 
 const Memo: React.FC = () => {
     const [spaces, setSpaces] = useState<Space[]>([]);
@@ -11,6 +12,7 @@ const Memo: React.FC = () => {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [quote, setQuote] = useState(''); // 原文/引用
+    const [isQuoteExpanded, setIsQuoteExpanded] = useState(false);
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
@@ -75,9 +77,13 @@ const Memo: React.FC = () => {
     useEffect(() => {
         if (quoteRef.current) {
             quoteRef.current.style.height = 'auto'; // Reset
-            quoteRef.current.style.height = `${quoteRef.current.scrollHeight}px`;
+            if (isQuoteExpanded) {
+                quoteRef.current.style.height = `${quoteRef.current.scrollHeight}px`;
+            } else {
+                quoteRef.current.style.height = '60px';
+            }
         }
-    }, [quote]);
+    }, [quote, isQuoteExpanded]);
 
     // Auto-resize Content
     useEffect(() => {
@@ -182,6 +188,7 @@ const Memo: React.FC = () => {
             const selectedText = results[0]?.result;
             if (selectedText && selectedText.trim()) {
                 setQuote(selectedText.trim());
+                setIsQuoteExpanded(selectedText.length < 100);
             }
         } catch (err) {
             console.warn('获取选中文本失败', err);
@@ -198,6 +205,7 @@ const Memo: React.FC = () => {
                 const text = await navigator.clipboard.readText();
                 if (text && text.trim()) {
                     setQuote(text.trim());
+                    setIsQuoteExpanded(true);
                     return;
                 }
             }
@@ -326,26 +334,20 @@ const Memo: React.FC = () => {
 
     const clearQuote = () => {
         setQuote('');
+        setIsQuoteExpanded(false);
     };
 
     return (
         <div className="flex flex-col h-full bg-transparent relative">
             {/* Top Bar: Space Selector */}
-            <div className="px-5 py-3 flex items-center justify-between glass z-10">
-                <div className="flex items-center gap-2 group relative">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Storage</span>
-                    <div className="relative flex items-center">
-                        <select
-                            value={selectedSpace}
-                            onChange={(e) => handleSpaceChange(e.target.value)}
-                            className="appearance-none bg-primary/10 hover:bg-primary/20 border border-primary/10 rounded-lg px-3 py-1 text-[11px] font-bold text-primary cursor-pointer transition-all pr-8 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30"
-                        >
-                            {spaces.map(s => (
-                                <option key={s._id || s.id} value={s._id || s.id} className="text-foreground bg-background">{s.title}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-2 h-3.5 w-3.5 text-primary pointer-events-none" />
-                    </div>
+            <div className="px-5 py-3 flex items-center justify-between glass z-10 min-h-[50px]">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground/70 tracking-wider">Storage</span>
+                    <SpaceSelector
+                        spaces={spaces}
+                        selectedSpaceId={selectedSpace}
+                        onChange={handleSpaceChange}
+                    />
                 </div>
 
                 {/* Quick Actions (Paste) */}
@@ -368,18 +370,40 @@ const Memo: React.FC = () => {
                     {/* 1. Quote Block (Editable) */}
                     {quote && (
                         <div className="relative group animate-in slide-in-from-top-2 fade-in duration-300">
-                            <div className="p-1 bg-gradient-to-br from-accent/50 to-muted/50 rounded-2xl border border-border/50 shadow-sm relative">
-                                <Quote className="h-4 w-4 text-muted-foreground/30 absolute top-4 left-4 z-0 pointer-events-none" />
-                                <textarea
-                                    ref={quoteRef}
-                                    value={quote}
-                                    onChange={(e) => setQuote(e.target.value)}
-                                    className="w-full bg-transparent border-none text-sm text-muted-foreground leading-relaxed font-serif pl-10 pr-8 py-3 resize-none focus:ring-0 focus:outline-none placeholder-muted-foreground/40 min-h-[60px]"
-                                    placeholder="引用内容..."
-                                />
+                            <div
+                                className={`
+                                    p-1 bg-gradient-to-br from-accent/50 to-muted/50 rounded-2xl border border-border/50 shadow-sm relative transition-all duration-300
+                                    ${isQuoteExpanded ? 'ring-1 ring-primary/20' : 'hover:bg-accent/70 cursor-pointer'}
+                                `}
+                                onClick={() => !isQuoteExpanded && setIsQuoteExpanded(true)}
+                            >
+                                <Quote className="h-4 w-4 text-primary/20 absolute top-4 left-4 z-0 pointer-events-none" />
+                                <div className="relative">
+                                    <textarea
+                                        ref={quoteRef}
+                                        value={quote}
+                                        onChange={(e) => setQuote(e.target.value)}
+                                        className={`
+                                            w-full bg-transparent border-none text-sm text-muted-foreground leading-relaxed font-serif pl-10 pr-8 py-3 resize-none focus:ring-0 focus:outline-none placeholder-muted-foreground/60 transition-all duration-300
+                                            ${isQuoteExpanded ? 'min-h-[120px]' : 'h-[60px] cursor-pointer overflow-hidden'}
+                                        `}
+                                        placeholder="引用内容..."
+                                        readOnly={!isQuoteExpanded}
+                                    />
+                                    {/* Expand/Collapse Toggle Button for better UX */}
+                                    <div className="absolute bottom-2 right-2 flex gap-1 z-20">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setIsQuoteExpanded(!isQuoteExpanded); }}
+                                            className="p-1 text-muted-foreground/50 hover:text-primary rounded-full hover:bg-white/50 transition-colors"
+                                            title={isQuoteExpanded ? "折叠" : "展开"}
+                                        >
+                                            {isQuoteExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <button
-                                onClick={clearQuote}
+                                onClick={(e) => { e.stopPropagation(); clearQuote(); }}
                                 className="absolute -top-2 -right-2 p-1.5 bg-card border border-border rounded-full shadow-sm text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all opacity-0 group-hover:opacity-100 scale-90 hover:scale-100 z-10"
                                 title="移除引用"
                             >
@@ -396,7 +420,7 @@ const Memo: React.FC = () => {
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="w-full text-xl font-bold text-foreground placeholder:text-muted-foreground/40 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
+                            className="w-full text-xl font-bold text-foreground placeholder:text-muted-foreground/60 border-none focus:ring-0 focus:outline-none focus:border-none px-0 bg-transparent tracking-tight outline-none"
                         />
                         <div className="relative">
                             <textarea
@@ -406,7 +430,7 @@ const Memo: React.FC = () => {
                                 onChange={(e) => setContent(e.target.value)}
                                 onPaste={handlePaste}
                                 onKeyDown={handleKeyDown}
-                                className="w-full resize-none text-base leading-7 text-foreground/90 placeholder:text-muted-foreground/40 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
+                                className="w-full resize-none text-base leading-7 text-foreground/90 placeholder:text-muted-foreground/60 border-none focus:ring-0 focus:outline-none px-0 py-0 bg-transparent outline-none overflow-hidden"
                                 style={{ minHeight: '200px' }}
                             />
                             {uploadingImage && (
@@ -445,15 +469,18 @@ const Memo: React.FC = () => {
                     <button
                         onClick={handleSend}
                         disabled={sending || uploadingImage || (!content.trim() && !quote.trim())}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed ${status === 'success'
-                            ? 'bg-green-500 text-white dark:bg-green-600'
-                            : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30'
-                            }`}
+                        className={`
+                            relative flex items-center justify-center gap-2 h-10 rounded-full font-bold text-sm transition-all duration-300 shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap
+                            ${status === 'success' ? 'w-24 bg-green-500 text-white dark:bg-green-600' : 'w-24 bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30'}
+                        `}
                     >
                         {sending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                         ) : status === 'success' ? (
-                            <Check className="h-5 w-5" />
+                            <div className="flex items-center gap-1.5 animate-in zoom-in spin-in-45 duration-300">
+                                <Check className="h-5 w-5" />
+                                <span>已保存</span>
+                            </div>
                         ) : (
                             <>
                                 <Send className="h-4 w-4" />

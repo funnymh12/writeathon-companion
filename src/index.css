@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,17 +5,20 @@
 @layer base {
   :root {
     /* Light Mode - Teal/Slate Base */
-    --background: 210 20% 98%;      /* #FAFAFA */
-    --foreground: 222.2 84% 4.9%;   /* #020817 */
+    --background: 210 20% 98%;
+    /* #FAFAFA */
+    --foreground: 222.2 84% 4.9%;
+    /* #020817 */
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-    
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
     /* Writeathon Teal (#2CD3B2 reference, adjusted for WCAG) */
-    --primary: 173 80% 40%;         /* #14b8a6 (Teal-500) */
+    --primary: 173 80% 40%;
+    /* #14b8a6 (Teal-500) */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -25,7 +27,8 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 173 50% 96%;          /* Teal-50 */
+    --accent: 173 50% 96%;
+    /* Teal-50 */
     --accent-foreground: 173 80% 40%;
 
     --destructive: 0 84.2% 60.2%;
@@ -44,8 +47,10 @@
 
   .dark {
     /* Dark Mode - Deep Slate/Teal */
-    --background: 222.2 84% 4.9%;   /* #020817 */
-    --foreground: 210 40% 98%;      /* #F8FAFC */
+    --background: 222.2 84% 4.9%;
+    /* #020817 */
+    --foreground: 210 40% 98%;
+    /* #F8FAFC */
 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
@@ -53,7 +58,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 173 80% 40%;         /* Keep Teal */
+    --primary: 173 80% 40%;
+    /* Keep Teal */
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -82,10 +88,11 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-feature-settings: "cv11", "ss01";
   }
 
   /* Optional: Global selection color */
@@ -98,27 +105,36 @@
   .glass {
     @apply bg-background/80 backdrop-blur-md border-b border-border/50 shadow-sm dark:bg-background/80 dark:border-white/10;
   }
-  
+
   .glass-card {
     @apply bg-card/80 backdrop-blur-md border border-border/50 shadow-sm dark:bg-card/80 dark:border-white/10;
   }
 
-  /* Custom Scrollbar */
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+  /* Custom Scrollbar - Cross Browser */
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
+
+  /* Webkit */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
   .scrollbar-thin::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 dark:bg-slate-700 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors;
+    @apply bg-slate-200 dark:bg-slate-700/50 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors;
   }
 
   .hover-lift {
     @apply transition-transform duration-300 ease-out hover:-translate-y-0.5;
   }
-  
+
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -126,9 +142,17 @@
 
 /* Animations */
 @keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
+
 .animate-enter {
   animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

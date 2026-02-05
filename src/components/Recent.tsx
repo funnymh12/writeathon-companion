@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WriteathonClient, Card, Space } from '../utils/api';
 import { storage } from '../utils/storage';
 import { formatLogFooter } from '../utils/textUtils';
+import SpaceSelector from './SpaceSelector';
 import { Loader2, ArrowLeft, Send, Check, ChevronRight, Search, Edit3, Plus, Save, X, Sparkles, RefreshCw, Copy, FilePlus, CornerDownLeft, Clock } from 'lucide-react';
 
 type View = 'list' | 'detail' | 'pick';
@@ -543,25 +544,18 @@ const Recent: React.FC = () => {
 
                     {/* Space Select */}
                     {spaces.length > 0 && activeTab === 'recent' && (
-                        <div className="relative flex items-center text-xs">
-                            <select
-                                value={selectedSpace}
-                                onChange={async (e) => {
-                                    const newSpaceId = e.target.value;
-                                    setSelectedSpace(newSpaceId);
-                                    const spaceName = spaces.find(s => (s._id || s.id) === newSpaceId)?.title || '默认空间';
-                                    await storage.set({ selectedSpaceId: newSpaceId, selectedSpaceName: spaceName });
-                                }}
-                                className="appearance-none bg-teal-50/50 hover:bg-teal-100/50 border border-teal-100/30 rounded-xl px-4 py-2 text-teal-700 font-bold transition-all pr-10 outline-none focus:ring-2 focus:ring-teal-500/10 cursor-pointer max-w-[130px] truncate"
-                            >
-                                <option value="">所有空间</option>
-                                {spaces.map(s => {
-                                    return <option key={s._id || s.id} value={s._id || s.id}>{s.title}</option>;
-                                })}
-                            </select>
-                            <ChevronDown className="absolute right-3 h-4 w-4 text-teal-600 pointer-events-none" />
-                        </div>
+                        <SpaceSelector
+                            spaces={[{ id: '', title: '所有空间' } as any, ...spaces]}
+                            selectedSpaceId={selectedSpace}
+                            onChange={async (id) => {
+                                setSelectedSpace(id);
+                                const spaceName = spaces.find(s => (s._id || s.id) === id)?.title || '默认空间';
+                                await storage.set({ selectedSpaceId: id, selectedSpaceName: spaceName });
+                            }}
+                            className="min-w-[120px]"
+                        />
                     )}
+
                     {activeTab === 'pick' && (
                         <button
                             onClick={fetchPickedCards}
